@@ -1,0 +1,75 @@
+name: CI/CD Workflow
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: wind_auth
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: admin
+        ports:
+          - 5432:5432
+        options: >- # Healthcheck options
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Wait for PostgreSQL
+        run: | # Wait for PostgreSQL to be ready
+          for i in $(seq 1 10); do
+            nc -z localhost 5432 && echo "PostgreSQL is ready" && break
+            echo "Waiting for PostgreSQL..." && sleep 1
+          done
+
+      - name: Set up .env for CI
+        run: |
+          echo "DATABASE_URL=postgresql://postgres:admin@localhost:5432/wind_auth?schema=public" > .env
+          echo "JWT_SECRET=ci-secret" >> .env
+          echo "JWT_ACCESS_EXPIRY=15m" >> .env
+          echo "JWT_REFRESH_EXPIRY=7d" >> .env
+          echo "PORT=4000" >> .env
+          echo "CORS_ORIGINS=http://localhost:3000" >> .env
+          echo "RATE_LIMIT_WINDOW_MS=60000" >> .env
+          echo "RATE_LIMIT_MAX=100" >> .env
+          echo "SUPER_ADMIN_EMAIL=superadmin@example.com" >> .env
+          echo "SUPER_ADMIN_PASSWORD=superadminpassword" >> .env
+
+      - name: Run Prisma Migrations
+        run: npx prisma migrate deploy
+
+      - name: Seed Database
+        run: npm run seed
+
+      - name: Run Lint
+        run: npm run lint
+
+      - name: Run Tests
+        run: npm test
+
+      - name: Build Application
+        run: npm run build
