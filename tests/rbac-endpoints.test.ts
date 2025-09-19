@@ -63,7 +63,7 @@ describe('RBAC Endpoints', () => {
   describe('GET /permissions', () => {
     it('should return a list of all permissions', async () => {
       const res = await request(app)
-        .get('/permissions')
+        .get('/api/permissions')
         .set('Authorization', `Bearer ${superAdminToken}`);
       expect(res.statusCode).toEqual(200);
       expect(res.body).toBeInstanceOf(Array);
@@ -77,7 +77,7 @@ describe('RBAC Endpoints', () => {
       await prisma.permission.deleteMany({});
 
       const res = await request(app)
-        .get('/permissions')
+        .get('/api/permissions')
         .set('Authorization', `Bearer ${superAdminToken}`);
       expect(res.statusCode).toEqual(200);
       expect(res.body).toBeInstanceOf(Array);
@@ -88,7 +88,7 @@ describe('RBAC Endpoints', () => {
   describe('GET /roles', () => {
     it('should return a list of all roles', async () => {
       const res = await request(app)
-        .get('/roles')
+        .get('/api/roles')
         .set('Authorization', `Bearer ${superAdminToken}`);
       expect(res.statusCode).toEqual(200);
       expect(res.body).toBeInstanceOf(Array);
@@ -128,7 +128,7 @@ describe('RBAC Endpoints', () => {
       });
 
       const res = await request(app)
-        .get('/roles')
+        .get('/api/roles')
         .set('Authorization', `Bearer ${superAdminToken}`);
       expect(res.statusCode).toEqual(500);
       expect(res.body).toEqual({ message: 'Failed to fetch roles' });
@@ -140,7 +140,7 @@ describe('RBAC Endpoints', () => {
       });
 
       const res = await request(app)
-        .get('/permissions')
+        .get('/api/permissions')
         .set('Authorization', `Bearer ${superAdminToken}`);
       expect(res.statusCode).toEqual(500);
       expect(res.body).toEqual({ message: 'Failed to fetch permissions' });
@@ -234,53 +234,53 @@ describe('RBAC Authorization Tests', () => {
   });
 
   it('should return 401 for unauthenticated access to /roles', async () => {
-    const res = await request(app).get('/roles');
+    const res = await request(app).get('/api/roles');
     expect(res.statusCode).toEqual(401);
   });
 
   it('should return 403 for regular user access to /roles', async () => {
     const res = await request(app)
-      .get('/roles')
+      .get('/api/roles')
       .set('Authorization', `Bearer ${regularUserToken}`);
     expect(res.statusCode).toEqual(403);
   });
 
   it('should return 403 for user with no roles access to /roles', async () => {
     const res = await request(app)
-      .get('/roles')
+      .get('/api/roles')
       .set('Authorization', `Bearer ${noRoleUserToken}`);
     expect(res.statusCode).toEqual(403);
   });
 
   it('should return 401 for unauthenticated access to /permissions', async () => {
-    const res = await request(app).get('/permissions');
+    const res = await request(app).get('/api/permissions');
     expect(res.statusCode).toEqual(401);
   });
 
   it('should return 403 for regular user access to /permissions', async () => {
     const res = await request(app)
-      .get('/permissions')
+      .get('/api/permissions')
       .set('Authorization', `Bearer ${regularUserToken}`);
     expect(res.statusCode).toEqual(403);
   });
 
   it('should return 403 for user with no roles access to /permissions', async () => {
     const res = await request(app)
-      .get('/permissions')
+      .get('/api/permissions')
       .set('Authorization', `Bearer ${noRoleUserToken}`);
     expect(res.statusCode).toEqual(403);
   });
 
   it('should allow SUPER_ADMIN to access /roles', async () => {
     const res = await request(app)
-      .get('/roles')
+      .get('/api/roles')
       .set('Authorization', `Bearer ${superAdminToken}`);
     expect(res.statusCode).toEqual(200);
   });
 
   it('should allow SUPER_ADMIN to access /permissions', async () => {
     const res = await request(app)
-      .get('/permissions')
+      .get('/api/permissions')
       .set('Authorization', `Bearer ${superAdminToken}`);
     expect(res.statusCode).toEqual(200);
   });

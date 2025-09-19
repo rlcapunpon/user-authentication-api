@@ -68,7 +68,7 @@ describe('Auth Flow', () => {
 
   it('should register a new user', async () => {
     const res = await request(app)
-      .post('/auth/register')
+      .post('/api/auth/register')
       .send({
         email: 'test@example.com',
         password: 'password123',
@@ -80,7 +80,7 @@ describe('Auth Flow', () => {
 
   it('should login the user and return tokens', async () => {
     const res = await request(app)
-      .post('/auth/login')
+      .post('/api/auth/login')
       .send({
         email: 'test@example.com',
         password: 'password123',
@@ -92,7 +92,7 @@ describe('Auth Flow', () => {
 
   it('should get user profile using access token including roles and permissions', async () => {
     const res = await request(app)
-      .get('/auth/me')
+      .get('/api/auth/me')
       .set('Authorization', `Bearer ${userToken}`);
     expect(res.statusCode).toEqual(200);
     expect(res.body).toHaveProperty('email', 'meuser@example.com');
@@ -104,7 +104,7 @@ describe('Auth Flow', () => {
 
   it('should update user email', async () => {
     const res = await request(app)
-      .put('/auth/me')
+      .put('/api/auth/me')
       .set('Authorization', `Bearer ${userToken}`)
       .send({
         email: 'updatedmeuser@example.com',
@@ -115,7 +115,7 @@ describe('Auth Flow', () => {
 
   it('should update user password with old password verification', async () => {
     const res = await request(app)
-      .put('/auth/me')
+      .put('/api/auth/me')
       .set('Authorization', `Bearer ${userToken}`)
       .send({
         oldPassword: 'password123',
@@ -125,7 +125,7 @@ describe('Auth Flow', () => {
 
     // Try logging in with new password
     const loginRes = await request(app)
-      .post('/auth/login')
+      .post('/api/auth/login')
       .send({
         email: 'updatedmeuser@example.com',
         password: 'newpassword123',
@@ -135,7 +135,7 @@ describe('Auth Flow', () => {
 
   it('should not update password with incorrect old password', async () => {
     const res = await request(app)
-      .put('/auth/me')
+      .put('/api/auth/me')
       .set('Authorization', `Bearer ${userToken}`)
       .send({
         oldPassword: 'wrongpassword',
@@ -147,7 +147,7 @@ describe('Auth Flow', () => {
 
   it('should refresh access token using refresh token', async () => {
     const loginRes = await request(app)
-      .post('/auth/login')
+      .post('/api/auth/login')
       .send({
         email: 'test@example.com',
         password: 'password123',
@@ -155,7 +155,7 @@ describe('Auth Flow', () => {
     const refreshToken = loginRes.body.refreshToken;
 
     const res = await request(app)
-      .post('/auth/refresh')
+      .post('/api/auth/refresh')
       .send({
         refreshToken,
       });
@@ -166,7 +166,7 @@ describe('Auth Flow', () => {
 
   it('should logout the user and revoke refresh token', async () => {
     const loginRes = await request(app)
-      .post('/auth/login')
+      .post('/api/auth/login')
       .send({
         email: 'test@example.com',
         password: 'password123',
@@ -174,7 +174,7 @@ describe('Auth Flow', () => {
     const refreshToken = loginRes.body.refreshToken;
 
     const res = await request(app)
-      .post('/auth/logout')
+      .post('/api/auth/logout')
       .send({
         refreshToken,
       });
@@ -183,7 +183,7 @@ describe('Auth Flow', () => {
 
   it('should deactivate user account', async () => {
     const res = await request(app)
-      .delete('/auth/me')
+      .delete('/api/auth/me')
       .set('Authorization', `Bearer ${userToken}`);
     expect(res.statusCode).toEqual(204);
 

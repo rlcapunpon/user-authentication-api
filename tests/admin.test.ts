@@ -186,7 +186,7 @@ describe('Admin User Management', () => {
 
   // GET /users
   it('should allow SUPER_ADMIN to list all users', async () => {
-    const res = await request(app).get('/users').set('Authorization', `Bearer ${superAdminToken}`);
+    const res = await request(app).get('/api/users').set('Authorization', `Bearer ${superAdminToken}`);
     expect(res.statusCode).toEqual(200);
     expect(res.body.length).toBeGreaterThanOrEqual(3); // superadmin, admin, user
     expect(res.body[0]).toHaveProperty('email');
@@ -194,24 +194,24 @@ describe('Admin User Management', () => {
   });
 
   it('should allow ADMIN to list all users', async () => {
-    const res = await request(app).get('/users').set('Authorization', `Bearer ${adminToken}`);
+    const res = await request(app).get('/api/users').set('Authorization', `Bearer ${adminToken}`);
     expect(res.statusCode).toEqual(200);
     expect(res.body.length).toBeGreaterThanOrEqual(3);
   });
 
   it('should not allow regular CLIENT to list all users', async () => {
-    const res = await request(app).get('/users').set('Authorization', `Bearer ${regularUserToken}`);
+    const res = await request(app).get('/api/users').set('Authorization', `Bearer ${regularUserToken}`);
     expect(res.statusCode).toEqual(403);
   });
 
   it('should not allow unauthenticated user to list all users', async () => {
-    const res = await request(app).get('/users');
+    const res = await request(app).get('/api/users');
     expect(res.statusCode).toEqual(401);
   });
 
   // GET /users/:id
   it('should allow SUPER_ADMIN to get a user by ID', async () => {
-    const res = await request(app).get(`/users/${regularUserId}`).set('Authorization', `Bearer ${superAdminToken}`);
+    const res = await request(app).get(`/api/users/${regularUserId}`).set('Authorization', `Bearer ${superAdminToken}`);
     expect(res.statusCode).toEqual(200);
     expect(res.body).toHaveProperty('id', regularUserId);
     expect(res.body).toHaveProperty('email', 'user@example.com');
@@ -219,13 +219,13 @@ describe('Admin User Management', () => {
   });
 
   it('should allow ADMIN to get a user by ID', async () => {
-    const res = await request(app).get(`/users/${regularUserId}`).set('Authorization', `Bearer ${adminToken}`);
+    const res = await request(app).get(`/api/users/${regularUserId}`).set('Authorization', `Bearer ${adminToken}`);
     expect(res.statusCode).toEqual(200);
     expect(res.body).toHaveProperty('id', regularUserId);
   });
 
   it('should not allow regular CLIENT to get another user by ID', async () => {
-    const res = await request(app).get(`/users/${adminId}`).set('Authorization', `Bearer ${regularUserToken}`);
+    const res = await request(app).get(`/api/users/${adminId}`).set('Authorization', `Bearer ${regularUserToken}`);
     expect(res.statusCode).toEqual(403);
   });
 
@@ -244,14 +244,14 @@ describe('Admin User Management', () => {
     });
     await prisma.user.delete({ where: { id: tempUser.id } });
 
-    const res = await request(app).get(`/users/${tempUser.id}`).set('Authorization', `Bearer ${superAdminToken}`);
+    const res = await request(app).get(`/api/users/${tempUser.id}`).set('Authorization', `Bearer ${superAdminToken}`);
     expect(res.statusCode).toEqual(404);
   });
 
   // POST /users
   it('should allow SUPER_ADMIN to create a new user', async () => {
     const res = await request(app)
-      .post('/users')
+      .post('/api/users')
       .set('Authorization', `Bearer ${superAdminToken}`)
       .send({
         email: 'newuser@example.com',
@@ -266,7 +266,7 @@ describe('Admin User Management', () => {
 
   it('should not allow ADMIN to create a new user (missing permission)', async () => {
     const res = await request(app)
-      .post('/users')
+      .post('/api/users')
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
         email: 'admincreated@example.com',
@@ -278,7 +278,7 @@ describe('Admin User Management', () => {
 
   it('should not allow regular CLIENT to create a new user', async () => {
     const res = await request(app)
-      .post('/users')
+      .post('/api/users')
       .set('Authorization', `Bearer ${regularUserToken}`)
       .send({
         email: 'usercreated@example.com',
@@ -290,7 +290,7 @@ describe('Admin User Management', () => {
 
   it('should return 400 for invalid user creation input', async () => {
     const res = await request(app)
-      .post('/users')
+      .post('/api/users')
       .set('Authorization', `Bearer ${superAdminToken}`)
       .send({
         email: 'invalid-email',
@@ -315,7 +315,7 @@ describe('Admin User Management', () => {
     await prisma.userRole.create({ data: { userId: userToUpdate.id, roleId: (await prisma.role.findUnique({ where: { name: 'CLIENT' } }))!.id } });
 
     const res = await request(app)
-      .put(`/users/${userToUpdate.id}/roles`)
+      .put(`/api/users/${userToUpdate.id}/roles`)
       .set('Authorization', `Bearer ${superAdminToken}`)
       .send({
         roles: ['ADMIN', 'CLIENT'],
@@ -340,7 +340,7 @@ describe('Admin User Management', () => {
     await prisma.userRole.create({ data: { userId: userToUpdate.id, roleId: (await prisma.role.findUnique({ where: { name: 'CLIENT' } }))!.id } });
 
     const res = await request(app)
-      .put(`/users/${userToUpdate.id}/roles`)
+      .put(`/api/users/${userToUpdate.id}/roles`)
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
         roles: ['ADMIN'],
@@ -350,7 +350,7 @@ describe('Admin User Management', () => {
 
   it('should return 400 for invalid role update input', async () => {
     const res = await request(app)
-      .put(`/users/${regularUserId}/roles`)
+      .put(`/api/users/${regularUserId}/roles`)
       .set('Authorization', `Bearer ${superAdminToken}`)
       .send({
         roles: ['NON_EXISTENT_ROLE'],
@@ -373,7 +373,7 @@ describe('Admin User Management', () => {
     });
 
     const res = await request(app)
-      .delete(`/users/${userToDelete.id}`)
+      .delete(`/api/users/${userToDelete.id}`)
       .set('Authorization', `Bearer ${superAdminToken}`);
     expect(res.statusCode).toEqual(204);
 
@@ -395,7 +395,7 @@ describe('Admin User Management', () => {
     });
 
     const res = await request(app)
-      .delete(`/users/${userToDelete.id}`)
+      .delete(`/api/users/${userToDelete.id}`)
       .set('Authorization', `Bearer ${adminToken}`);
     expect(res.statusCode).toEqual(403);
   });
@@ -416,7 +416,7 @@ describe('Admin User Management', () => {
     await prisma.user.delete({ where: { id: tempUser.id } });
 
     const res = await request(app)
-      .delete(`/users/${tempUser.id}`)
+      .delete(`/api/users/${tempUser.id}`)
       .set('Authorization', `Bearer ${superAdminToken}`);
     expect(res.statusCode).toEqual(404);
   });

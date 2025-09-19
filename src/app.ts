@@ -2,23 +2,34 @@ import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import swaggerUi from 'swagger-ui-express';
 
-import { authRoutes, rolesRoutes, permissionsRoutes, oidcRoutes, usersRoutes, configRoutes } from './routes';
+import { authRoutes, rolesRoutes, permissionsRoutes, oidcRoutes, usersRoutes, configRoutes, resourcesRoutes } from './routes';
 import { authGuard } from './middleware/auth.middleware';
 import { swaggerSpec } from './config/swagger';
 
 const app: Express = express();
 
-app.use(cors());
+// CORS configuration
+const corsOptions = {
+  origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : true, // Allow all origins if not specified
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'X-Requested-With', 'Accept'],
+  credentials: true, // Allow cookies and authorization headers
+  optionsSuccessStatus: 200, // Some legacy browsers (IE11, various SmartTVs) choke on 204
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-app.use('/auth', authRoutes);
-app.use('/roles', rolesRoutes);
-app.use('/permissions', permissionsRoutes);
-app.use('/users', usersRoutes);
-app.use('/config', configRoutes);
-app.use('/', oidcRoutes); // OIDC routes are at the root
+// API routes with /api prefix
+app.use('/api/auth', authRoutes);
+app.use('/api/roles', rolesRoutes);
+app.use('/api/permissions', permissionsRoutes);
+app.use('/api/users', usersRoutes);
+app.use('/api/config', configRoutes);
+app.use('/api/resources', resourcesRoutes);
+app.use('/api', oidcRoutes); // OIDC routes under /api
 
 app.get('/health', (req: Request, res: Response) => {
   res.status(200).send('OK');

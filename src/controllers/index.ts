@@ -3,3 +3,4 @@ export * from './rbac.controller';
 export * from './oidc.controller';
 export * from './user.controller';
 export * from './config.controller';
+export * from './resource.controller';

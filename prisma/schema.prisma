@@ -20,6 +20,7 @@ model User {
   credential    Credential?
   roles         UserRole[]
   refreshTokens RefreshToken[]
+  resourceRoles UserResourceRole[]
 }
 
 model Credential {
@@ -70,4 +71,42 @@ model RefreshToken {
   expiresAt DateTime
   revokedAt DateTime?
   createdAt DateTime @default(now())
+}
+
+// New models for resource-based RBAC
+
+model ResourceRole {
+  id            String             @id @default(uuid())
+  name          String
+  resourceType  String
+  resourceId    String
+  description   String?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  permissions   RolePermissionMap[]
+  userResourceRoles UserResourceRole[]
+
+  @@unique([name, resourceType, resourceId])
+}
+
+model RolePermissionMap {
+  resourceRole   ResourceRole @relation(fields: [resourceRoleId], references: [id], onDelete: Cascade)
+  resourceRoleId String
+  permissionVerb String // e.g., "read", "update", "delete"
+
+  @@id([resourceRoleId, permissionVerb])
+}
+
+model UserResourceRole {
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String
+  resourceRole   ResourceRole @relation(fields: [resourceRoleId], references: [id], onDelete: Cascade)
+  resourceRoleId String
+  resourceType   String // Redundant but useful for querying
+  resourceId     String // Redundant but useful for querying
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([userId, resourceType, resourceId]) // A user can only have one role per resource
+  @@id([userId, resourceRoleId])
 }

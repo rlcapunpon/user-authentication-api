@@ -5,15 +5,21 @@ const router = Router();
 
 /**
  * @swagger
+ * tags:
+ *   name: Config
+ *   description: System configuration endpoints
+ */
+
+/**
+ * @swagger
  * /config/permissions:
  *   get:
  *     summary: Get role-permission mapping
  *     description: Retrieve the system-wide default role-to-permission mapping.
- *     tags:
- *       - Config
+ *     tags: [Config]
  *     responses:
  *       200:
- *         description: A list of roles and their associated permissions.
+ *         description: Role-permission mapping retrieved successfully
  *         content:
  *           application/json:
  *             schema:
@@ -31,6 +37,10 @@ const router = Router();
  *                       example: "read:users"
  *       500:
  *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.get('/permissions', getConfigPermissions);
 

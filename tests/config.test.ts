@@ -81,7 +81,7 @@ describe('Config Endpoints', () => {
   });
 
   it('should return system-wide default role-permission mapping', async () => {
-    const res = await request(app).get('/config/permissions');
+    const res = await request(app).get('/api/config/permissions');
     expect(res.statusCode).toEqual(200);
     expect(res.body).toBeInstanceOf(Array);
     expect(res.body.length).toBeGreaterThan(0);
