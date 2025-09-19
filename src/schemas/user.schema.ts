@@ -49,13 +49,13 @@ export const updateMyProfileSchema = z.object({
 
 export const resourceIdSchema = z.object({
   params: z.object({
-    resourceId: z.string().uuid(),
+    resourceId: z.string(), // Allow any string format (CUID from Prisma)
   }),
 });
 
 export const userResourceRoleSchema = z.object({
   params: z.object({
     userId: z.string().uuid(),
-    resourceId: z.string().uuid(),
+    resourceId: z.string(), // Allow any string format (CUID from Prisma)
   }),
 });

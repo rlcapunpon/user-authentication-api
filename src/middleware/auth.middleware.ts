@@ -44,7 +44,7 @@ export const authGuard = async (req: Request, res: Response, next: NextFunction)
       resourceId: userResourceRole.resourceId,
       roleId: userResourceRole.roleId,
       roleName: userResourceRole.role.name,
-      permissions: userResourceRole.role.permissions?.map((rp: any) => rp.permission.name) || [],
+      permissions: userResourceRole.role.permissions || [],
     })) || [];
 
     req.user = { 

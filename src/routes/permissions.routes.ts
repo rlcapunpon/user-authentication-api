@@ -36,7 +36,7 @@ const router = Router();
  *       500:
  *         description: Internal server error
  */
-router.get('/', authGuard, rbacGuard(['read_permissions']), (req, res) => {
+router.get('/', authGuard, (req, res) => {
   // Return predefined permissions based on our new schema
   const permissions = [
     'read_users',

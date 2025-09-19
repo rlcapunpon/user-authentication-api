@@ -11,24 +11,24 @@ export const createRoleSchema = z.object({
   body: z.object({
     name: z.string().min(1, 'Role name is required'),
     description: z.string().optional(),
-    resourceId: z.string().uuid().optional(), // null for global roles
-    permissions: z.array(z.string().uuid()).optional(),
+    resourceId: z.string().optional(), // Allow any string format (CUID from Prisma)
+    permissions: z.array(z.string()).min(1, 'At least one permission is required'),
   }),
 });
 
 export const assignUserResourceRoleSchema = z.object({
   body: z.object({
     userId: z.string().uuid('Invalid user ID format'),
-    roleId: z.string().uuid('Invalid role ID format'),
-    resourceId: z.string().uuid('Invalid resource ID format').optional(),
+    roleId: z.string(), // Allow any string format (CUID from Prisma)
+    resourceId: z.string().optional(), // Allow any string format (CUID from Prisma)
   }),
 });
 
 export const revokeUserResourceRoleSchema = z.object({
   body: z.object({
     userId: z.string().uuid('Invalid user ID format'),
-    roleId: z.string().uuid('Invalid role ID format'),
-    resourceId: z.string().uuid('Invalid resource ID format').optional(),
+    roleId: z.string(), // Allow any string format (CUID from Prisma)
+    resourceId: z.string().optional(), // Allow any string format (CUID from Prisma)
   }),
 });
 
@@ -41,19 +41,19 @@ export const unassignUserResourceRoleSchema = z.object({
 
 export const getUserResourcePermissionsSchema = z.object({
   params: z.object({
-    resourceId: z.string().uuid(),
+    resourceId: z.string(), // Allow any string format (CUID from Prisma)
     userId: z.string().uuid(),
   }),
 });
 
 export const resourceIdSchema = z.object({
   params: z.object({
-    resourceId: z.string().uuid(),
+    resourceId: z.string(), // Allow any string format (CUID from Prisma)
   }),
 });
 
 export const roleIdSchema = z.object({
   params: z.object({
-    roleId: z.string().uuid(),
+    roleId: z.string(), // Allow any string format (CUID from Prisma)
   }),
 });
