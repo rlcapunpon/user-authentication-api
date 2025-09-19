@@ -1,35 +1,32 @@
 import { Request, Response, NextFunction } from 'express';
 import { findUserById } from '../services/user.service';
-import { getUserResourcePermissions } from '../services/resource.service';
 
-export const rbacGuard = (requiredRoles: string[] = [], requiredPermissions: string[] = []) => {
+export const rbacGuard = (requiredPermissions: string[] = []) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
       return res.status(401).json({ message: 'Authentication required' });
     }
 
-    const user = await findUserById(req.user.userId);
-    if (!user) {
-      return res.status(401).json({ message: 'User not found' });
+    // SuperAdmin bypasses all permission checks
+    if (req.user.isSuperAdmin) {
+      return next();
     }
 
-    const userRoles = user.roles.map(ur => ur.role.name);
-    const userPermissions = user.roles.flatMap(ur => ur.role.permissions.map(rp => rp.permission.name));
-
-    // Check for roles
-    if (requiredRoles.length > 0) {
-      const hasRequiredRole = requiredRoles.some(role => userRoles.includes(role));
-      if (!hasRequiredRole) {
-        return res.status(403).json({ message: 'Forbidden: Insufficient role' });
-      }
+    // If no specific permissions required, just need to be authenticated
+    if (requiredPermissions.length === 0) {
+      return next();
     }
 
-    // Permissions check
-    if (requiredPermissions.length > 0) {
-      const hasRequiredPermission = requiredPermissions.some(permission => userPermissions.includes(permission));
-      if (!hasRequiredPermission) {
-        return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
-      }
+    // Collect all permissions from all resource roles
+    const allUserPermissions = req.user.resourceRoles.flatMap(role => role.permissions);
+
+    // Check if user has any of the required permissions
+    const hasRequiredPermission = requiredPermissions.some(permission => 
+      allUserPermissions.includes(permission)
+    );
+
+    if (!hasRequiredPermission) {
+      return res.status(403).json({ message: 'Insufficient permissions' });
     }
 
     next();
@@ -48,32 +45,35 @@ export const authorizeResource = (requiredPermissions: string[]) => {
       return res.status(401).json({ message: 'Authentication required' });
     }
 
-    const { resourceType, resourceId } = req.params;
+    // SuperAdmin bypasses all permission checks
+    if (req.user.isSuperAdmin) {
+      return next();
+    }
+
+    const { resourceId } = req.params;
     
-    if (!resourceType || !resourceId) {
-      return res.status(400).json({ message: 'Resource type and ID are required' });
+    if (!resourceId) {
+      return res.status(400).json({ message: 'Resource ID is required' });
     }
 
     try {
-      // Get the user's permissions for this specific resource
-      const userResourcePermissions = await getUserResourcePermissions({
-        userId: req.user.userId,
-        resourceType,
-        resourceId,
-      });
+      // Find the user's role for this specific resource
+      const resourceRole = req.user.resourceRoles.find(role => 
+        role.resourceId === resourceId
+      );
 
-      // If user has no permissions for this resource, deny access
-      if (!userResourcePermissions || userResourcePermissions.length === 0) {
-        return res.status(403).json({ message: 'Forbidden: No access to this resource' });
+      // If user has no role for this resource, deny access
+      if (!resourceRole) {
+        return res.status(403).json({ message: 'Insufficient permissions for this resource' });
       }
 
-      // Check if user has any of the required permissions
+      // Check if user has any of the required permissions for this resource
       const hasRequiredPermission = requiredPermissions.some(permission => 
-        userResourcePermissions.includes(permission)
+        resourceRole.permissions.includes(permission)
       );
 
       if (!hasRequiredPermission) {
-        return res.status(403).json({ message: 'Forbidden: Insufficient permissions for this resource' });
+        return res.status(403).json({ message: 'Insufficient permissions for this resource' });
       }
 
       next();
@@ -81,5 +81,22 @@ export const authorizeResource = (requiredPermissions: string[]) => {
       console.error('Error in authorizeResource middleware:', error);
       res.status(500).json({ message: 'Internal server error' });
     }
+  };
+};
+
+/**
+ * Middleware that checks if user is a super admin
+ */
+export const requireSuperAdmin = () => {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+
+    if (!req.user.isSuperAdmin) {
+      return res.status(403).json({ message: 'Super admin access required' });
+    }
+
+    next();
   };
 };

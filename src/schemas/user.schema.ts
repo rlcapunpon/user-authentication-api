@@ -4,16 +4,24 @@ export const createUserSchema = z.object({
   body: z.object({
     email: z.string().email(),
     password: z.string().min(6),
-    roles: z.array(z.string()).optional(),
+    isSuperAdmin: z.boolean().optional(),
   }),
 });
 
-export const updateUserRolesSchema = z.object({
-  params: z.object({
-    id: z.string().uuid(),
-  }),
+export const updateUserSuperAdminSchema = z.object({
   body: z.object({
-    roles: z.array(z.string()),
+    isSuperAdmin: z.boolean(),
+  }),
+  params: z.object({
+    id: z.string().uuid('Invalid user ID format'),
+  }),
+});
+
+export const revokeUserResourceRoleSchema = z.object({
+  body: z.object({
+    userId: z.string().uuid('Invalid user ID format'),
+    roleId: z.string().uuid('Invalid role ID format'),
+    resourceId: z.string().uuid('Invalid resource ID format').optional(),
   }),
 });
 
@@ -36,5 +44,18 @@ export const updateMyProfileSchema = z.object({
   }, {
     message: 'oldPassword is required when changing password',
     path: ['oldPassword'],
+  }),
+});
+
+export const resourceIdSchema = z.object({
+  params: z.object({
+    resourceId: z.string().uuid(),
+  }),
+});
+
+export const userResourceRoleSchema = z.object({
+  params: z.object({
+    userId: z.string().uuid(),
+    resourceId: z.string().uuid(),
   }),
 });

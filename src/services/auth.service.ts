@@ -51,7 +51,43 @@ export const refresh = async (refreshToken: string) => {
 };
 
 export const getMe = async (userId: string) => {
-  return findUserById(userId);
+  const me = await (prisma as any).user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      email: true,
+      isActive: true,
+      isSuperAdmin: true,
+      createdAt: true,
+      updatedAt: true,
+      resourceRoles: {
+        select: {
+          resourceId: true,
+          role: {
+            select: { name: true }
+          }
+        }
+      }
+    }
+  });
+
+  if (!me) {
+    throw new Error('User not found');
+  }
+
+  // Transform to match response structure
+  return {
+    id: me.id,
+    email: me.email,
+    isActive: me.isActive,
+    isSuperAdmin: me.isSuperAdmin,
+    createdAt: me.createdAt,
+    updatedAt: me.updatedAt,
+    resources: me.resourceRoles.map((rr: any) => ({
+      resourceId: rr.resourceId,
+      role: rr.role.name
+    }))
+  };
 };
 
 export const validate = (token: string) => {

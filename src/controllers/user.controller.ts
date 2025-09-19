@@ -27,20 +27,40 @@ export const getUser = async (req: Request, res: Response) => {
 
 export const createUser = async (req: Request, res: Response) => {
   try {
-    const { email, password, roles } = req.body;
-    const user = await userService.createUserWithRoles(email, password, roles || []);
+    const { email, password, isSuperAdmin } = req.body;
+    const user = await userService.createUser(email, password, isSuperAdmin || false);
     res.status(201).json(user);
   } catch (error) {
     handleUnknownError(error, res, 400);
   }
 };
 
-export const updateUserRoles = async (req: Request, res: Response) => {
+export const updateUserSuperAdmin = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { roles } = req.body;
-    const user = await userService.updateUserRoles(id, roles);
+    const { isSuperAdmin } = req.body;
+    const user = await userService.updateUserSuperAdmin(id, isSuperAdmin);
     res.json(user);
+  } catch (error) {
+    handleUnknownError(error, res, 400);
+  }
+};
+
+export const assignUserResourceRole = async (req: Request, res: Response) => {
+  try {
+    const { userId, roleId, resourceId } = req.body;
+    const userResourceRole = await userService.assignUserResourceRole(userId, roleId, resourceId);
+    res.status(201).json(userResourceRole);
+  } catch (error) {
+    handleUnknownError(error, res, 400);
+  }
+};
+
+export const revokeUserResourceRole = async (req: Request, res: Response) => {
+  try {
+    const { userId, roleId, resourceId } = req.body;
+    await userService.revokeUserResourceRole(userId, roleId, resourceId);
+    res.status(204).send();
   } catch (error) {
     handleUnknownError(error, res, 400);
   }

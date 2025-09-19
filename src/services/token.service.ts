@@ -11,7 +11,11 @@ export const generateAuthTokens = async (user: UserWithRoles) => {
     },
   });
 
-  const accessToken = generateAccessToken({ userId: user.id, roles: user.roles.map(ur => ur.role.name) });
+  const accessToken = generateAccessToken({ 
+    userId: user.id, 
+    isSuperAdmin: user.isSuperAdmin,
+    resourceRoles: user.resourceRoles || []
+  });
   const jwtRefreshToken = generateJwtRefreshToken({ userId: user.id, jti: refreshToken.id });
 
   return { accessToken, refreshToken: jwtRefreshToken };

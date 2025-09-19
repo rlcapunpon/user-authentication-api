@@ -1,41 +1,59 @@
 import { z } from 'zod';
 
-export const createResourceRoleSchema = z.object({
+export const createResourceSchema = z.object({
+  body: z.object({
+    name: z.string().min(1, 'Resource name is required'),
+    description: z.string().optional(),
+  }),
+});
+
+export const createRoleSchema = z.object({
   body: z.object({
     name: z.string().min(1, 'Role name is required'),
     description: z.string().optional(),
-    permissions: z.array(z.string().min(1)).min(1, 'At least one permission is required'),
-  }),
-  params: z.object({
-    resourceType: z.string().min(1, 'Resource type is required'),
-    resourceId: z.string().min(1, 'Resource ID is required'),
+    resourceId: z.string().uuid().optional(), // null for global roles
+    permissions: z.array(z.string().uuid()).optional(),
   }),
 });
 
-export const assignUserToResourceRoleSchema = z.object({
+export const assignUserResourceRoleSchema = z.object({
   body: z.object({
-    userId: z.string().min(1, 'User ID is required'),
-  }),
-  params: z.object({
-    resourceType: z.string().min(1, 'Resource type is required'),
-    resourceId: z.string().min(1, 'Resource ID is required'),
-    roleId: z.string().min(1, 'Role ID is required'),
+    userId: z.string().uuid('Invalid user ID format'),
+    roleId: z.string().uuid('Invalid role ID format'),
+    resourceId: z.string().uuid('Invalid resource ID format').optional(),
   }),
 });
 
-export const unassignUserFromResourceRoleSchema = z.object({
+export const revokeUserResourceRoleSchema = z.object({
+  body: z.object({
+    userId: z.string().uuid('Invalid user ID format'),
+    roleId: z.string().uuid('Invalid role ID format'),
+    resourceId: z.string().uuid('Invalid resource ID format').optional(),
+  }),
+});
+
+export const unassignUserResourceRoleSchema = z.object({
   params: z.object({
-    resourceType: z.string().min(1, 'Resource type is required'),
-    resourceId: z.string().min(1, 'Resource ID is required'),
-    roleId: z.string().min(1, 'Role ID is required'),
-    userId: z.string().min(1, 'User ID is required'),
+    userId: z.string().uuid(),
+    resourceId: z.string().uuid(),
   }),
 });
 
 export const getUserResourcePermissionsSchema = z.object({
   params: z.object({
-    resourceType: z.string().min(1, 'Resource type is required'),
-    resourceId: z.string().min(1, 'Resource ID is required'),
-    userId: z.string().min(1, 'User ID is required'),
+    resourceId: z.string().uuid(),
+    userId: z.string().uuid(),
+  }),
+});
+
+export const resourceIdSchema = z.object({
+  params: z.object({
+    resourceId: z.string().uuid(),
+  }),
+});
+
+export const roleIdSchema = z.object({
+  params: z.object({
+    roleId: z.string().uuid(),
   }),
 });

@@ -1,11 +1,11 @@
-import { getRolePermissionMapping } from './rbac.service';
+import { getAllRoles } from './rbac.service';
 
 export const getRolePermissions = async () => {
-  const roles = await getRolePermissionMapping();
+  const roles = await getAllRoles();
 
-  const rolePermissions = roles.map(role => ({
+  const rolePermissions = roles.map((role: any) => ({
     role: role.name,
-    permissions: role.permissions.map((p: any) => p.permission.name),
+    permissions: role.permissions || [],
   }));
 
   return rolePermissions;

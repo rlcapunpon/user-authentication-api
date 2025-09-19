@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import { getPermissions } from '../controllers/rbac.controller';
 import { authGuard } from '../middleware/auth.middleware';
 import { rbacGuard } from '../middleware/rbac.middleware';
 
@@ -8,17 +7,17 @@ const router = Router();
 /**
  * @swagger
  * tags:
- *   name: RBAC
- *   description: Role-based access control (global roles and permissions)
+ *   name: Permissions
+ *   description: Permission management
  */
 
 /**
  * @swagger
  * /permissions:
  *   get:
- *     summary: Get all global permissions
- *     description: Retrieve all global permissions available in the system
- *     tags: [RBAC]
+ *     summary: Get all available permissions
+ *     description: Retrieve all available permissions in the system
+ *     tags: [Permissions]
  *     security:
  *       - bearerAuth: []
  *     responses:
@@ -29,26 +28,29 @@ const router = Router();
  *             schema:
  *               type: array
  *               items:
- *                 $ref: '#/components/schemas/Permission'
+ *                 type: string
  *       401:
  *         description: Unauthorized
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  *       403:
  *         description: Forbidden - insufficient permissions
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  *       500:
  *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
  */
-router.get('/', authGuard, rbacGuard(['ADMIN', 'SUPER_ADMIN']), getPermissions);
+router.get('/', authGuard, rbacGuard(['read_permissions']), (req, res) => {
+  // Return predefined permissions based on our new schema
+  const permissions = [
+    'read_users',
+    'create_user',
+    'update_users',
+    'delete_user',
+    'read_roles',
+    'create_role',
+    'read_resources',
+    'create_resource',
+    'read_permissions',
+    'manage_resource_roles'
+  ];
+  res.json(permissions);
+});
 
 export default router;

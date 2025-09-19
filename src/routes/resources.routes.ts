@@ -9,288 +9,173 @@ import { Router } from 'express';
 import { authGuard } from '../middleware/auth.middleware';
 import { rbacGuard, authorizeResource } from '../middleware/rbac.middleware';
 import { validate } from '../middleware/validate';
-import * as resourceController from '../controllers/resource.controller';
+import { getResources, createResource, createRole } from '../controllers/rbac.controller';
+import { assignUserResourceRole, revokeUserResourceRole } from '../controllers/user.controller';
 import { 
-  createResourceRoleSchema, 
-  assignUserToResourceRoleSchema 
+  createResourceSchema,
+  createRoleSchema,
+  assignUserResourceRoleSchema,
+  revokeUserResourceRoleSchema
 } from '../schemas/resource.schema';
 
 const router = Router();
 
 /**
  * @swagger
- * /resources/{resourceType}/{resourceId}/roles:
- *   post:
- *     summary: Create a role for a specific resource
+ * /resources:
+ *   get:
+ *     summary: Get all resources
  *     tags: [Resources]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: resourceType
- *         required: true
- *         schema:
- *           type: string
- *         description: The type of the resource (e.g., "Organization", "Project")
- *       - in: path
- *         name: resourceId
- *         required: true
- *         schema:
- *           type: string
- *         description: The unique identifier of the resource
+ *     responses:
+ *       200:
+ *         description: List of resources retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
+router.get('/', authGuard, rbacGuard(['read_resources']), getResources);
+
+/**
+ * @swagger
+ * /resources:
+ *   post:
+ *     summary: Create a new resource
+ *     tags: [Resources]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - name
- *               - permissions
  *             properties:
  *               name:
  *                 type: string
- *                 description: The name of the role
  *               description:
  *                 type: string
- *                 description: Optional description of the role
- *               permissions:
- *                 type: array
- *                 items:
- *                   type: string
- *                 description: Array of permission verbs (e.g., ["read", "write", "update"])
  *     responses:
  *       201:
- *         description: Resource role created successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 id:
- *                   type: string
- *                 name:
- *                   type: string
- *                 resourceType:
- *                   type: string
- *                 resourceId:
- *                   type: string
- *                 description:
- *                   type: string
- *                 permissions:
- *                   type: array
- *                   items:
- *                     type: string
+ *         description: Resource created successfully
  *       400:
- *         description: Bad request - validation error
+ *         description: Bad request
  *       401:
  *         description: Unauthorized
  *       403:
  *         description: Forbidden
- *       409:
- *         description: Conflict - role with this name already exists for this resource
  */
-// Create a role for a specific resource
-router.post(
-  '/:resourceType/:resourceId/roles',
-  authGuard,
-  rbacGuard(['ADMIN', 'SUPERADMIN']),
-  validate(createResourceRoleSchema),
-  resourceController.createResourceRole
-);
+router.post('/', authGuard, rbacGuard(['create_resource']), validate(createResourceSchema), createResource);
 
 /**
  * @swagger
- * /resources/{resourceType}/{resourceId}/roles/{roleId}/assign:
+ * /resources/roles:
+ *   post:
+ *     summary: Create a role for a resource
+ *     tags: [Resources]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               permissions:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               resourceId:
+ *                 type: string
+ *                 nullable: true
+ *     responses:
+ *       201:
+ *         description: Role created successfully
+ *       400:
+ *         description: Bad request
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
+router.post('/roles', authGuard, rbacGuard(['create_role']), validate(createRoleSchema), createRole);
+
+/**
+ * @swagger
+ * /resources/assign-role:
  *   post:
  *     summary: Assign a user to a resource role
  *     tags: [Resources]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: resourceType
- *         required: true
- *         schema:
- *           type: string
- *         description: The type of the resource
- *       - in: path
- *         name: resourceId
- *         required: true
- *         schema:
- *           type: string
- *         description: The unique identifier of the resource
- *       - in: path
- *         name: roleId
- *         required: true
- *         schema:
- *           type: string
- *         description: The ID of the resource role
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - userId
  *             properties:
  *               userId:
  *                 type: string
- *                 description: The ID of the user to assign the role to
+ *               roleId:
+ *                 type: string
+ *               resourceId:
+ *                 type: string
+ *                 nullable: true
  *     responses:
  *       201:
- *         description: User assigned to resource role successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 userId:
- *                   type: string
- *                 resourceRoleId:
- *                   type: string
- *                 resourceType:
- *                   type: string
- *                 resourceId:
- *                   type: string
+ *         description: Role assigned successfully
  *       400:
- *         description: Bad request - validation error
+ *         description: Bad request
  *       401:
  *         description: Unauthorized
  *       403:
  *         description: Forbidden
- *       404:
- *         description: Resource role or user not found
- *       409:
- *         description: Conflict - user already has a role for this resource
  */
-// Assign a user to a resource role
-router.post(
-  '/:resourceType/:resourceId/roles/:roleId/assign',
-  authGuard,
-  rbacGuard(['ADMIN', 'SUPERADMIN']),
-  validate(assignUserToResourceRoleSchema),
-  resourceController.assignUserToResourceRole
-);
+router.post('/assign-role', authGuard, rbacGuard(['manage_resource_roles']), validate(assignUserResourceRoleSchema), assignUserResourceRole);
 
 /**
  * @swagger
- * /resources/{resourceType}/{resourceId}/roles/{roleId}/assign/{userId}:
- *   delete:
- *     summary: Remove a user from a resource role
+ * /resources/revoke-role:
+ *   post:
+ *     summary: Revoke a user's resource role
  *     tags: [Resources]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: resourceType
- *         required: true
- *         schema:
- *           type: string
- *         description: The type of the resource
- *       - in: path
- *         name: resourceId
- *         required: true
- *         schema:
- *           type: string
- *         description: The unique identifier of the resource
- *       - in: path
- *         name: roleId
- *         required: true
- *         schema:
- *           type: string
- *         description: The ID of the resource role
- *       - in: path
- *         name: userId
- *         required: true
- *         schema:
- *           type: string
- *         description: The ID of the user to remove from the role
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               userId:
+ *                 type: string
+ *               roleId:
+ *                 type: string
+ *               resourceId:
+ *                 type: string
+ *                 nullable: true
  *     responses:
- *       200:
- *         description: User removed from resource role successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
+ *       204:
+ *         description: Role revoked successfully
+ *       400:
+ *         description: Bad request
  *       401:
  *         description: Unauthorized
  *       403:
  *         description: Forbidden
- *       404:
- *         description: User resource role assignment not found
  */
-// Remove a user from a resource role
-router.delete(
-  '/:resourceType/:resourceId/roles/:roleId/assign/:userId',
-  authGuard,
-  rbacGuard(['ADMIN', 'SUPERADMIN']),
-  resourceController.unassignUserFromResourceRole
-);
+router.post('/revoke-role', authGuard, rbacGuard(['manage_resource_roles']), validate(revokeUserResourceRoleSchema), revokeUserResourceRole);
 
 /**
  * @swagger
- * /resources/{resourceType}/{resourceId}/users/{userId}/permissions:
- *   get:
- *     summary: Get permissions for a user in a specific resource
- *     tags: [Resources]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: resourceType
- *         required: true
- *         schema:
- *           type: string
- *         description: The type of the resource
- *       - in: path
- *         name: resourceId
- *         required: true
- *         schema:
- *           type: string
- *         description: The unique identifier of the resource
- *       - in: path
- *         name: userId
- *         required: true
- *         schema:
- *           type: string
- *         description: The ID of the user
- *     responses:
- *       200:
- *         description: User permissions retrieved successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 permissions:
- *                   type: array
- *                   items:
- *                     type: string
- *                   example: ["read", "update"]
- *       401:
- *         description: Unauthorized
- *       403:
- *         description: Forbidden
- *       404:
- *         description: User has no role in this resource
- */
-// Get permissions for a user in a specific resource
-router.get(
-  '/:resourceType/:resourceId/users/:userId/permissions',
-  authGuard,
-  rbacGuard(['ADMIN', 'SUPERADMIN']),
-  resourceController.getUserResourcePermissions
-);
-
-/**
- * @swagger
- * /resources/{resourceType}/{resourceId}/test-read:
+ * /resources/{resourceId}/test-read:
  *   get:
  *     summary: Test endpoint for read permission authorization
  *     description: Test endpoint to verify that the authorizeResource middleware works for read permissions
@@ -298,12 +183,6 @@ router.get(
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - in: path
- *         name: resourceType
- *         required: true
- *         schema:
- *           type: string
- *         description: The type of the resource
  *       - in: path
  *         name: resourceId
  *         required: true
@@ -329,9 +208,8 @@ router.get(
  *       403:
  *         description: Forbidden - insufficient permissions for this resource
  */
-// Test endpoint for authorizeResource middleware
 router.get(
-  '/:resourceType/:resourceId/test-read',
+  '/:resourceId/test-read',
   authGuard,
   authorizeResource(['read']),
   (req, res) => {
@@ -341,7 +219,7 @@ router.get(
 
 /**
  * @swagger
- * /resources/{resourceType}/{resourceId}/test-write:
+ * /resources/{resourceId}/test-write:
  *   post:
  *     summary: Test endpoint for write permission authorization
  *     description: Test endpoint to verify that the authorizeResource middleware works for write/update permissions
@@ -349,12 +227,6 @@ router.get(
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - in: path
- *         name: resourceType
- *         required: true
- *         schema:
- *           type: string
- *         description: The type of the resource
  *       - in: path
  *         name: resourceId
  *         required: true
@@ -380,9 +252,8 @@ router.get(
  *       403:
  *         description: Forbidden - insufficient permissions for this resource
  */
-// Test endpoint for authorizeResource middleware with write permission
 router.post(
-  '/:resourceType/:resourceId/test-write',
+  '/:resourceId/test-write',
   authGuard,
   authorizeResource(['write', 'update']),
   (req, res) => {

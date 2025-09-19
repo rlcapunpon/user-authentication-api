@@ -1,28 +1,20 @@
 import { prisma } from '../db';
 import { hashPassword, comparePassword } from '../utils/crypto';
 
-export const createUser = async (email: string, password: string) => {
+export const createUser = async (email: string, password: string, isSuperAdmin: boolean = false) => {
   const hashedPassword = await hashPassword(password);
   return prisma.user.create({
     data: {
       email,
+      isSuperAdmin,
       credential: {
         create: {
           passwordHash: hashedPassword,
         },
       },
     },
-    select: {
-      id: true,
-      email: true,
-      isActive: true,
-      createdAt: true,
-      updatedAt: true,
-      roles: {
-        include: {
-          role: true,
-        },
-      },
+    include: {
+      resourceRoles: true,
     },
   });
 };
@@ -37,25 +29,12 @@ export const findUserByEmail = (email: string) => {
 export const findUserById = (id: string) => {
   return prisma.user.findUnique({
     where: { id },
-    select: {
-      id: true,
-      email: true,
-      organizationCode: true,
-      isActive: true,
-      createdAt: true,
-      updatedAt: true,
+    include: {
       credential: true,
-      roles: {
+      resourceRoles: {
         include: {
-          role: {
-            include: {
-              permissions: {
-                include: {
-                  permission: true,
-                },
-              },
-            },
-          },
+          role: true,
+          resource: true,
         },
       },
     },
@@ -64,100 +43,72 @@ export const findUserById = (id: string) => {
 
 export const listUsers = () => {
   return prisma.user.findMany({
-    select: {
-      id: true,
-      email: true,
-      isActive: true,
-      createdAt: true,
-      updatedAt: true,
-      roles: {
-        include: {
-          role: true,
-        },
-      },
+    include: {
+      resourceRoles: true,
     },
   });
 };
 
 export const getUserById = (id: string) => {
-  return prisma.user.findUnique({
+  return (prisma as any).user.findUnique({
     where: { id },
-    select: {
-      id: true,
-      email: true,
-      isActive: true,
-      createdAt: true,
-      updatedAt: true,
-      roles: {
+    include: {
+      resourceRoles: {
         include: {
-          role: true,
-        },
-      },
-    },
-  });
-};
-
-export const createUserWithRoles = async (email: string, password: string, roleNames: string[]) => {
-  const hashedPassword = await hashPassword(password);
-  return prisma.user.create({
-    data: {
-      email,
-      credential: {
-        create: {
-          passwordHash: hashedPassword,
-        },
-      },
-      roles: {
-        create: roleNames.map(roleName => ({
           role: {
-            connect: { name: roleName },
+            include: {
+              resource: true,
+            },
           },
-        })),
-      },
-    },
-    select: {
-      id: true,
-      email: true,
-      isActive: true,
-      createdAt: true,
-      updatedAt: true,
-      roles: {
-        include: {
-          role: true,
         },
       },
     },
   });
 };
 
-export const updateUserRoles = async (userId: string, roleNames: string[]) => {
-  // Disconnect all existing roles
-  await prisma.userRole.deleteMany({
-    where: { userId },
-  });
-
-  // Connect new roles
-  return prisma.user.update({
+export const updateUserSuperAdmin = async (userId: string, isSuperAdmin: boolean) => {
+  return (prisma as any).user.update({
     where: { id: userId },
-    data: {
-      roles: {
-        create: roleNames.map(roleName => ({
+    data: { isSuperAdmin },
+    include: {
+      resourceRoles: {
+        include: {
           role: {
-            connect: { name: roleName },
+            include: {
+              resource: true,
+            },
           },
-        })),
+        },
       },
     },
-    select: {
-      id: true,
-      email: true,
-      isActive: true,
-      createdAt: true,
-      updatedAt: true,
-      roles: {
+  });
+};
+
+export const assignUserResourceRole = async (userId: string, roleId: string, resourceId?: string) => {
+  return (prisma as any).userResourceRole.create({
+    data: {
+      userId,
+      roleId,
+      resourceId,
+    },
+    include: {
+      user: true,
+      role: {
         include: {
-          role: true,
+          resource: true,
         },
+      },
+    },
+  });
+};
+
+export const revokeUserResourceRole = async (userId: string, roleId: string, resourceId?: string) => {
+  return (prisma as any).userResourceRole.delete({
+    where: {
+      userId_roleId_resourceId: {
+        userId,
+        roleId,
+        resourceId,
       },
     },
   });
@@ -172,21 +123,21 @@ export const deactivateUser = async (userId: string) => {
 
 export const deleteUser = async (userId: string) => {
   // Delete associated refresh tokens first
-  await prisma.refreshToken.deleteMany({
+  await (prisma as any).refreshToken.deleteMany({
     where: { userId },
   });
-  // Delete associated user roles
-  await prisma.userRole.deleteMany({
+  // Delete associated user resource roles
+  await (prisma as any).userResourceRole.deleteMany({
     where: { userId },
   });
   // Then delete the user
-  return prisma.user.delete({
+  return (prisma as any).user.delete({
     where: { id: userId },
   });
 };
 
 export const updateUserProfile = async (userId: string, email?: string, oldPassword?: string, newPassword?: string) => {
-  const user = await prisma.user.findUnique({
+  const user = await (prisma as any).user.findUnique({
     where: { id: userId },
     include: { credential: true },
   });
@@ -203,7 +154,7 @@ export const updateUserProfile = async (userId: string, email?: string, oldPassw
       throw new Error('Invalid old password');
     }
     const hashedPassword = await hashPassword(newPassword);
-    return prisma.user.update({
+    return (prisma as any).user.update({
       where: { id: userId },
       data: {
         email: email || user.email,
@@ -213,28 +164,34 @@ export const updateUserProfile = async (userId: string, email?: string, oldPassw
           },
         },
       },
-      select: {
-        id: true,
-        email: true,
-        isActive: true,
-        createdAt: true,
-        updatedAt: true,
-        roles: true,
+      include: {
+        resourceRoles: {
+          include: {
+            role: {
+              include: {
+                resource: true,
+              },
+            },
+          },
+        },
       },
     });
   } else if (email) {
-    return prisma.user.update({
+    return (prisma as any).user.update({
       where: { id: userId },
       data: {
         email: email,
       },
-      select: {
-        id: true,
-        email: true,
-        isActive: true,
-        createdAt: true,
-        updatedAt: true,
-        roles: true,
+      include: {
+        resourceRoles: {
+          include: {
+            role: {
+              include: {
+                resource: true,
+              },
+            },
+          },
+        },
       },
     });
   }

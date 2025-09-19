@@ -1,37 +1,47 @@
 import { prisma } from '../db';
 
 export const getAllRoles = () => {
-  return prisma.role.findMany({
+  return (prisma as any).role.findMany({
     include: {
-      permissions: {
-        select: {
-          permission: {
-            select: {
-              name: true,
-            },
-          },
-        },
-      },
+      resource: true,
     },
   });
 };
 
-export const getAllPermissions = () => {
-  return prisma.permission.findMany();
+export const getRolesByResource = (resourceId?: string) => {
+  return (prisma as any).role.findMany({
+    where: {
+      resourceId: resourceId || null,
+    },
+    include: {
+      resource: true,
+    },
+  });
 };
 
-export const getRolePermissionMapping = () => {
-  return prisma.role.findMany({
+export const getAllResources = () => {
+  return (prisma as any).resource.findMany({
     include: {
-      permissions: {
-        select: {
-          permission: {
-            select: {
-              name: true,
-            },
-          },
-        },
-      },
+      roles: true,
+    },
+  });
+};
+
+export const createResource = (name: string, description?: string) => {
+  return (prisma as any).resource.create({
+    data: {
+      name,
+      description,
+    },
+  });
+};
+
+export const createRole = (name: string, permissions: string[], resourceId?: string) => {
+  return (prisma as any).role.create({
+    data: {
+      name,
+      permissions,
+      resourceId,
     },
   });
 };
@@ -41,11 +51,9 @@ export const getRolePermissionMapping = () => {
  * Returns simplified role data without sensitive permission details
  */
 export const getAvailableRoles = () => {
-  return prisma.role.findMany({
-    select: {
-      id: true,
-      name: true,
-      description: true,
+  return (prisma as any).role.findMany({
+    include: {
+      resource: true,
     },
     orderBy: {
       name: 'asc',

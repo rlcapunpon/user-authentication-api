@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,16 +8,17 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(uuid())
-  email         String    @unique
-  organizationCode String?
-  isActive      Boolean   @default(true)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  credential    Credential?
-  roles         UserRole[]
-  refreshTokens RefreshToken[]
-  resourceRoles UserResourceRole[]
+  id             String             @id @default(uuid())
+  email          String             @unique
+  isActive       Boolean            @default(true)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  credential     Credential?
+  refreshTokens  RefreshToken[]
+  resourceRoles  UserResourceRole[]
+
+  // SuperAdmin flag
+  isSuperAdmin   Boolean            @default(false)
 }
 
 model Credential {
@@ -30,37 +28,38 @@ model Credential {
   user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model Resource {
+  id          String             @id @default(cuid())
+  name        String             @unique
+  description String?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  roles       Role[]
+  userRoles   UserResourceRole[]
+}
+
 model Role {
-  id          String    @id @default(cuid())
-  name        String    @unique
+  id          String             @id @default(cuid())
+  name        String
   description String?
-  users       UserRole[]
-  permissions RolePermission[]
+  resourceId  String?
+  resource    Resource?          @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  permissions String[]           // Array of permission strings
+  userRoles   UserResourceRole[]
+
+  @@unique([name, resourceId]) // role name unique per resource
 }
 
-model Permission {
-  id          String    @id @default(cuid())
-  name        String    @unique
-  description String?
-  roles       RolePermission[]
-}
+model UserResourceRole {
+  id         String    @id @default(cuid())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  resource   Resource? @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  resourceId String?
+  role       Role      @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  roleId     String
 
-model UserRole {
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId String
-  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  roleId String
-
-  @@id([userId, roleId])
-}
-
-model RolePermission {
-  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  roleId       String
-  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
-  permissionId String
-
-  @@id([roleId, permissionId])
+  @@unique([userId, roleId, resourceId]) // unique role per resource per user
 }
 
 model RefreshToken {
@@ -71,42 +70,4 @@ model RefreshToken {
   expiresAt DateTime
   revokedAt DateTime?
   createdAt DateTime @default(now())
-}
-
-// New models for resource-based RBAC
-
-model ResourceRole {
-  id            String             @id @default(uuid())
-  name          String
-  resourceType  String
-  resourceId    String
-  description   String?
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
-  permissions   RolePermissionMap[]
-  userResourceRoles UserResourceRole[]
-
-  @@unique([name, resourceType, resourceId])
-}
-
-model RolePermissionMap {
-  resourceRole   ResourceRole @relation(fields: [resourceRoleId], references: [id], onDelete: Cascade)
-  resourceRoleId String
-  permissionVerb String // e.g., "read", "update", "delete"
-
-  @@id([resourceRoleId, permissionVerb])
-}
-
-model UserResourceRole {
-  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId         String
-  resourceRole   ResourceRole @relation(fields: [resourceRoleId], references: [id], onDelete: Cascade)
-  resourceRoleId String
-  resourceType   String // Redundant but useful for querying
-  resourceId     String // Redundant but useful for querying
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-
-  @@unique([userId, resourceType, resourceId]) // A user can only have one role per resource
-  @@id([userId, resourceRoleId])
 }

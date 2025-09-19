@@ -1,9 +1,10 @@
 import { Router } from 'express';
-import { listUsers, getUser, createUser, updateUserRoles, deactivateUser, deleteUser } from '../controllers/user.controller';
+import { listUsers, getUser, createUser, updateUserSuperAdmin, assignUserResourceRole, revokeUserResourceRole, deactivateUser, deleteUser } from '../controllers/user.controller';
 import { authGuard } from '../middleware/auth.middleware';
-import { rbacGuard } from '../middleware/rbac.middleware';
+import { rbacGuard, requireSuperAdmin } from '../middleware/rbac.middleware';
 import { validate } from '../middleware/validate';
-import { createUserSchema, updateUserRolesSchema, userIdSchema } from '../schemas/user.schema';
+import { createUserSchema, updateUserSuperAdminSchema, userIdSchema } from '../schemas/user.schema';
+import { assignUserResourceRoleSchema, revokeUserResourceRoleSchema } from '../schemas/resource.schema';
 
 const router = Router();
 
@@ -32,7 +33,7 @@ router.use(authGuard);
  *       403:
  *         description: Forbidden
  */
-router.get('/', rbacGuard([], ['read_users']), listUsers);
+router.get('/', rbacGuard(['read_users']), listUsers);
 
 /**
  * @swagger
@@ -58,7 +59,7 @@ router.get('/', rbacGuard([], ['read_users']), listUsers);
  *       404:
  *         description: User not found
  */
-router.get('/:id', rbacGuard([], ['read_users']), validate(userIdSchema), getUser);
+router.get('/:id', rbacGuard(['read_users']), validate(userIdSchema), getUser);
 
 /**
  * @swagger
@@ -84,13 +85,13 @@ router.get('/:id', rbacGuard([], ['read_users']), validate(userIdSchema), getUse
  *       403:
  *         description: Forbidden
  */
-router.post('/', rbacGuard([], ['create_user']), validate(createUserSchema), createUser);
+router.post('/', rbacGuard(['create_user']), validate(createUserSchema), createUser);
 
 /**
  * @swagger
- * /users/{id}/roles:
+ * /users/{id}/super-admin:
  *   put:
- *     summary: Update a user's roles
+ *     summary: Update a user's super admin status
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
@@ -105,10 +106,13 @@ router.post('/', rbacGuard([], ['create_user']), validate(createUserSchema), cre
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/UpdateUserRoles'
+ *             type: object
+ *             properties:
+ *               isSuperAdmin:
+ *                 type: boolean
  *     responses:
  *       200:
- *         description: User roles updated successfully.
+ *         description: User super admin status updated successfully.
  *       400:
  *         description: Bad request
  *       401:
@@ -118,7 +122,75 @@ router.post('/', rbacGuard([], ['create_user']), validate(createUserSchema), cre
  *       404:
  *         description: User not found
  */
-router.put('/:id/roles', rbacGuard([], ['update_users']), validate(updateUserRolesSchema), updateUserRoles);
+router.put('/:id/super-admin', requireSuperAdmin(), validate(updateUserSuperAdminSchema), updateUserSuperAdmin);
+
+/**
+ * @swagger
+ * /users/assign-role:
+ *   post:
+ *     summary: Assign a resource role to a user
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               userId:
+ *                 type: string
+ *               roleId:
+ *                 type: string
+ *               resourceId:
+ *                 type: string
+ *                 nullable: true
+ *     responses:
+ *       201:
+ *         description: Role assigned successfully.
+ *       400:
+ *         description: Bad request
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
+router.post('/assign-role', rbacGuard(['update_users']), validate(assignUserResourceRoleSchema), assignUserResourceRole);
+
+/**
+ * @swagger
+ * /users/revoke-role:
+ *   post:
+ *     summary: Revoke a resource role from a user
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               userId:
+ *                 type: string
+ *               roleId:
+ *                 type: string
+ *               resourceId:
+ *                 type: string
+ *                 nullable: true
+ *     responses:
+ *       204:
+ *         description: Role revoked successfully.
+ *       400:
+ *         description: Bad request
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
+router.post('/revoke-role', rbacGuard(['update_users']), validate(revokeUserResourceRoleSchema), revokeUserResourceRole);
 
 /**
  * @swagger
@@ -144,7 +216,7 @@ router.put('/:id/roles', rbacGuard([], ['update_users']), validate(updateUserRol
  *       404:
  *         description: User not found
  */
-router.put('/:id/deactivate', rbacGuard([], ['update_users']), validate(userIdSchema), deactivateUser); // Using PUT for deactivation
+router.put('/:id/deactivate', rbacGuard(['update_users']), validate(userIdSchema), deactivateUser); // Using PUT for deactivation
 
 /**
  * @swagger
@@ -170,6 +242,6 @@ router.put('/:id/deactivate', rbacGuard([], ['update_users']), validate(userIdSc
  *       404:
  *         description: User not found
  */
-router.delete('/:id', rbacGuard([], ['delete_user']), validate(userIdSchema), deleteUser);
+router.delete('/:id', rbacGuard(['delete_user']), validate(userIdSchema), deleteUser);
 
 export default router;

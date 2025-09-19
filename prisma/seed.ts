@@ -3,165 +3,234 @@ import bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
+async function hashPassword(password: string): Promise<string> {
+  return bcrypt.hash(password, 10);
+}
+
 async function main() {
   console.log('Seeding...');
 
-  // Create or upsert roles
-  const superAdminRole = await prisma.role.upsert({
-    where: { name: 'SUPERADMIN' },
+  // Create Resources
+  const orgResource = await (prisma as any).resource.upsert({
+    where: { name: 'Organization' },
     update: {},
-    create: { name: 'SUPERADMIN', description: 'Full access to all resources' },
-  });
-  const adminRole = await prisma.role.upsert({
-    where: { name: 'ADMIN' },
-    update: {},
-    create: { name: 'ADMIN', description: 'Admin access to most resources' },
-  });
-  const approverRole = await prisma.role.upsert({
-    where: { name: 'APPROVER' },
-    update: {},
-    create: { name: 'APPROVER', description: 'Approver access for specific tasks' },
-  });
-  const staffRole = await prisma.role.upsert({
-    where: { name: 'STAFF' },
-    update: {},
-    create: { name: 'STAFF', description: 'Staff access' },
-  });
-  const clientRole = await prisma.role.upsert({
-    where: { name: 'CLIENT' },
-    update: {},
-    create: { name: 'CLIENT', description: 'Client-level access with limited permissions' },
+    create: { name: 'Organization', description: 'Company organization' },
   });
 
-  // Create or upsert permissions
-  const createUser = await prisma.permission.upsert({ where: { name: 'create_user' }, update: {}, create: { name: 'create_user', description: 'Create users' } });
-  const readUsers = await prisma.permission.upsert({ where: { name: 'read_users' }, update: {}, create: { name: 'read_users', description: 'Read all users' } });
-  const updateUsers = await prisma.permission.upsert({ where: { name: 'update_users' }, update: {}, create: { name: 'update_users', description: 'Update any user' } });
-  const deleteUser = await prisma.permission.upsert({ where: { name: 'delete_user' }, update: {}, create: { name: 'delete_user', description: 'Delete any user' } });
-  const readUserSelf = await prisma.permission.upsert({ where: { name: 'read_user_self' }, update: {}, create: { name: 'read_user_self', description: 'Read own user profile' } });
-  const updateUserSelf = await prisma.permission.upsert({ where: { name: 'update_user_self' }, update: {}, create: { name: 'update_user_self', description: 'Update own user profile' } });
-
-  // Assign all permissions to SUPER_ADMIN role (using deleteMany and createMany to ensure idempotency)
-  await prisma.rolePermission.deleteMany({ where: { roleId: superAdminRole.id } });
-  const allPermissions = await prisma.permission.findMany();
-  await prisma.rolePermission.createMany({
-    data: allPermissions.map(perm => ({
-      roleId: superAdminRole.id,
-      permissionId: perm.id,
-    })),
-    skipDuplicates: true,
+  const projectResource = await (prisma as any).resource.upsert({
+    where: { name: 'Project' },
+    update: {},
+    create: { name: 'Project', description: 'Development project' },
   });
 
-  // Create or upsert Super Admin User
-  const superAdminEmail = process.env.SUPER_ADMIN_EMAIL || 'superadmin@example.com';
-  const superAdminPassword = process.env.SUPER_ADMIN_PASSWORD || 'superadminpassword';
-  const hashedPassword = await bcrypt.hash(superAdminPassword, 10);
+  // Create global roles (no resource association) - check if they exist first
+  let superAdminRole = await (prisma as any).role.findFirst({
+    where: {
+      name: 'SUPERADMIN',
+      resourceId: null,
+    },
+  });
 
-  const superAdminUser = await prisma.user.upsert({
-    where: { email: superAdminEmail },
+  if (!superAdminRole) {
+    superAdminRole = await (prisma as any).role.create({
+      data: {
+        name: 'SUPERADMIN',
+        description: 'Global super admin role',
+        resourceId: null,
+        permissions: [
+          'create_user',
+          'read_users',
+          'update_users',
+          'delete_user',
+          'read_roles',
+          'create_role',
+          'read_resources',
+          'create_resource',
+          'read_permissions',
+          'manage_resource_roles'
+        ],
+      },
+    });
+  }
+
+  let supportRole = await (prisma as any).role.findFirst({
+    where: {
+      name: 'SUPPORT',
+      resourceId: null,
+    },
+  });
+
+  if (!supportRole) {
+    supportRole = await (prisma as any).role.create({
+      data: {
+        name: 'SUPPORT',
+        description: 'Global support role',
+        resourceId: null,
+        permissions: ['read_users', 'read_permissions'],
+      },
+    });
+  }
+
+  // Create resource-specific roles
+  const orgAdminRole = await (prisma as any).role.upsert({
+    where: {
+      name_resourceId: {
+        name: 'ADMIN',
+        resourceId: orgResource.id,
+      },
+    },
     update: {},
     create: {
-      email: superAdminEmail,
-      isActive: true,
+      name: 'ADMIN',
+      description: 'Organization admin role',
+      resourceId: orgResource.id,
+      permissions: ['read', 'write', 'update', 'delete', 'manage_users'],
+    },
+  });
+
+  const orgMemberRole = await (prisma as any).role.upsert({
+    where: {
+      name_resourceId: {
+        name: 'MEMBER',
+        resourceId: orgResource.id,
+      },
+    },
+    update: {},
+    create: {
+      name: 'MEMBER',
+      description: 'Organization member role',
+      resourceId: orgResource.id,
+      permissions: ['read'],
+    },
+  });
+
+  const projectManagerRole = await (prisma as any).role.upsert({
+    where: {
+      name_resourceId: {
+        name: 'MANAGER',
+        resourceId: projectResource.id,
+      },
+    },
+    update: {},
+    create: {
+      name: 'MANAGER',
+      description: 'Project manager role',
+      resourceId: projectResource.id,
+      permissions: ['read', 'write', 'update', 'manage_tasks', 'assign_users'],
+    },
+  });
+
+  const projectContributorRole = await (prisma as any).role.upsert({
+    where: {
+      name_resourceId: {
+        name: 'CONTRIBUTOR',
+        resourceId: projectResource.id,
+      },
+    },
+    update: {},
+    create: {
+      name: 'CONTRIBUTOR',
+      description: 'Project contributor role',
+      resourceId: projectResource.id,
+      permissions: ['read', 'write'],
+    },
+  });
+
+  // Create users with super admin flag
+  const superAdminUser = await (prisma as any).user.upsert({
+    where: { email: 'superadmin@example.com' },
+    update: {},
+    create: {
+      email: 'superadmin@example.com',
+      isSuperAdmin: true,
       credential: {
         create: {
-          passwordHash: hashedPassword,
+          passwordHash: await hashPassword('password'),
         },
       },
     },
   });
 
-  // Connect superAdminUser to superAdminRole if not already connected
-  await prisma.userRole.upsert({
-    where: { userId_roleId: { userId: superAdminUser.id, roleId: superAdminRole.id } },
+  const orgAdminUser = await (prisma as any).user.upsert({
+    where: { email: 'orgadmin@example.com' },
     update: {},
     create: {
-      userId: superAdminUser.id,
-      roleId: superAdminRole.id,
-    },
-  });
-
-  console.log(`Created super admin user: ${superAdminUser.email}`);
-
-  // --- New seeding for resource-based RBAC ---
-  const testResourceType = "Organization";
-  const testResourceId = "org_123"; // A dummy organization ID
-
-  // Create or upsert ResourceRoles
-  const editorResourceRole = await prisma.resourceRole.upsert({
-    where: { name_resourceType_resourceId: { name: "editor", resourceType: testResourceType, resourceId: testResourceId } },
-    update: {},
-    create: {
-      name: "editor",
-      resourceType: testResourceType,
-      resourceId: testResourceId,
-      description: "Editor role for a specific resource",
-    },
-  });
-
-  const viewerResourceRole = await prisma.resourceRole.upsert({
-    where: { name_resourceType_resourceId: { name: "viewer", resourceType: testResourceType, resourceId: testResourceId } },
-    update: {},
-    create: {
-      name: "viewer",
-      resourceType: testResourceType,
-      resourceId: testResourceId,
-      description: "Viewer role for a specific resource",
-    },
-  });
-
-  // Map permissions to ResourceRoles (using deleteMany and createMany to ensure idempotency)
-  await prisma.rolePermissionMap.deleteMany({ where: { resourceRoleId: editorResourceRole.id } });
-  await prisma.rolePermissionMap.createMany({
-    data: [
-      { resourceRoleId: editorResourceRole.id, permissionVerb: "read" },
-      { resourceRoleId: editorResourceRole.id, permissionVerb: "update" },
-      { resourceRoleId: editorResourceRole.id, permissionVerb: "delete" },
-    ],
-    skipDuplicates: true,
-  });
-
-  await prisma.rolePermissionMap.deleteMany({ where: { resourceRoleId: viewerResourceRole.id } });
-  await prisma.rolePermissionMap.createMany({
-    data: [
-      { resourceRoleId: viewerResourceRole.id, permissionVerb: "read" },
-    ],
-    skipDuplicates: true,
-  });
-
-  // Create or upsert a sample user for resource roles
-  const resourceUserEmail = "resource.user@example.com";
-  const resourceUserPassword = "resourcepassword";
-  const hashedResourcePassword = await bcrypt.hash(resourceUserPassword, 10);
-
-  const resourceUser = await prisma.user.upsert({
-    where: { email: resourceUserEmail },
-    update: {},
-    create: {
-      email: resourceUserEmail,
-      isActive: true,
+      email: 'orgadmin@example.com',
+      isSuperAdmin: false,
       credential: {
         create: {
-          passwordHash: hashedResourcePassword,
+          passwordHash: await hashPassword('password'),
         },
       },
     },
   });
 
-  // Assign resource role to the sample user (using upsert to ensure idempotency)
-  await prisma.userResourceRole.upsert({
-    where: { userId_resourceType_resourceId: { userId: resourceUser.id, resourceType: testResourceType, resourceId: testResourceId } },
-    update: { resourceRoleId: editorResourceRole.id }, // Update role if user already exists for this resource
+  // Assign roles to users (org admin gets org admin role)
+  await (prisma as any).userResourceRole.upsert({
+    where: {
+      userId_roleId_resourceId: {
+        userId: orgAdminUser.id,
+        roleId: orgAdminRole.id,
+        resourceId: orgResource.id,
+      },
+    },
+    update: {},
     create: {
-      userId: resourceUser.id,
-      resourceRoleId: editorResourceRole.id,
-      resourceType: testResourceType,
-      resourceId: testResourceId,
+      userId: orgAdminUser.id,
+      roleId: orgAdminRole.id,
+      resourceId: orgResource.id,
     },
   });
 
-  console.log(`Created resource user: ${resourceUser.email} with role ${editorResourceRole.name} for ${testResourceType}:${testResourceId}`);
-  console.log('Seeding complete.');
+  const projectManagerUser = await (prisma as any).user.upsert({
+    where: { email: 'projectmanager@example.com' },
+    update: {},
+    create: {
+      email: 'projectmanager@example.com',
+      isSuperAdmin: false,
+      credential: {
+        create: {
+          passwordHash: await hashPassword('password'),
+        },
+      },
+    },
+  });
+
+  // Assign project manager role
+  await (prisma as any).userResourceRole.upsert({
+    where: {
+      userId_roleId_resourceId: {
+        userId: projectManagerUser.id,
+        roleId: projectManagerRole.id,
+        resourceId: projectResource.id,
+      },
+    },
+    update: {},
+    create: {
+      userId: projectManagerUser.id,
+      roleId: projectManagerRole.id,
+      resourceId: projectResource.id,
+    },
+  });
+
+  // Also give project manager org member role
+  await (prisma as any).userResourceRole.upsert({
+    where: {
+      userId_roleId_resourceId: {
+        userId: projectManagerUser.id,
+        roleId: orgMemberRole.id,
+        resourceId: orgResource.id,
+      },
+    },
+    update: {},
+    create: {
+      userId: projectManagerUser.id,
+      roleId: orgMemberRole.id,
+      resourceId: orgResource.id,
+    },
+  });
+
+  console.log('✅ Seeding completed successfully');
 }
 
 main()
