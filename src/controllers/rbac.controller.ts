@@ -32,3 +32,19 @@ export const getPermissions = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Failed to fetch permissions' });
   }
 };
+
+/**
+ * Handles the request to get available roles for UI consumption.
+ * @param req - The Express request object.
+ * @param res - The Express response object.
+ */
+export const getAvailableRoles = async (req: Request, res: Response) => {
+  try {
+    const roles = await rbacService.getAvailableRoles();
+    res.json(roles);
+  } catch (error) {
+    // Log the error for debugging purposes (optional, depending on logging setup)
+    console.error('Error fetching available roles:', error);
+    res.status(500).json({ message: 'Failed to fetch available roles' });
+  }
+};

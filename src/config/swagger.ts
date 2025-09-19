@@ -107,6 +107,28 @@ const swaggerDefinition = {
           },
         },
       },
+      AvailableRole: {
+        type: 'object',
+        description: 'Simplified role object for UI consumption',
+        properties: {
+          id: {
+            type: 'string',
+            description: 'Role identifier',
+            example: 'clm1234567890',
+          },
+          name: {
+            type: 'string',
+            description: 'Role name',
+            example: 'CLIENT',
+          },
+          description: {
+            type: 'string',
+            nullable: true,
+            description: 'Role description',
+            example: 'Client User',
+          },
+        },
+      },
       Permission: {
         type: 'object',
         properties: {

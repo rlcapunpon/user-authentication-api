@@ -35,3 +35,20 @@ export const getRolePermissionMapping = () => {
     },
   });
 };
+
+/**
+ * Get available roles with basic information for UI consumption
+ * Returns simplified role data without sensitive permission details
+ */
+export const getAvailableRoles = () => {
+  return prisma.role.findMany({
+    select: {
+      id: true,
+      name: true,
+      description: true,
+    },
+    orderBy: {
+      name: 'asc',
+    },
+  });
+};

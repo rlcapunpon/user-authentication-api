@@ -430,6 +430,29 @@ paths:
         '403':
           description: Forbidden - insufficient permissions
 
+  /roles/available:
+    get:
+      tags: [RBAC]
+      summary: Get available roles for UI consumption
+      description: Retrieve a simplified list of all available roles that can be used by the frontend for user interface components like dropdowns or role selection
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of available roles retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AvailableRole'
+        '401':
+          description: Unauthorized - authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   /permissions:
     get:
       tags: [RBAC]
@@ -861,6 +884,24 @@ components:
           items:
             $ref: '#/components/schemas/RolePermission'
           description: Permissions associated with this role
+
+    AvailableRole:
+      type: object
+      description: Simplified role object for UI consumption
+      properties:
+        id:
+          type: string
+          description: Role identifier
+          example: "clm1234567890"
+        name:
+          type: string
+          description: Role name
+          example: "CLIENT"
+        description:
+          type: string
+          nullable: true
+          description: Role description
+          example: "Client User"
 
     Permission:
       type: object
