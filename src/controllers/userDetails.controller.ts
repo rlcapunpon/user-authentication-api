@@ -5,7 +5,7 @@ import { prisma } from '../db';
 export const getUserDetailsHandler = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const userId = (req as any).user?.id;
+    const userId = (req as any).user?.userId;
     const isSuperAdmin = (req as any).user?.isSuperAdmin;
 
     // Only superadmin or the user themselves can view details
@@ -28,7 +28,7 @@ export const getUserDetailsHandler = async (req: Request, res: Response) => {
 export const updateUserDetailsHandler = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const userId = (req as any).user?.id;
+    const userId = (req as any).user?.userId;
     const isSuperAdmin = (req as any).user?.isSuperAdmin;
     const updateData = req.body;
 
@@ -61,7 +61,7 @@ export const updateUserDetailsHandler = async (req: Request, res: Response) => {
 export const deleteUserDetailsHandler = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const userId = (req as any).user?.id;
+    const userId = (req as any).user?.userId;
     const isSuperAdmin = (req as any).user?.isSuperAdmin;
 
     // Only superadmin can delete user details
@@ -100,7 +100,7 @@ export const getAllUserDetailsHandler = async (req: Request, res: Response) => {
 export const getUserSubordinatesHandler = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const userId = (req as any).user?.id;
+    const userId = (req as any).user?.userId;
     const isSuperAdmin = (req as any).user?.isSuperAdmin;
 
     // Only superadmin or the manager themselves can view subordinates
