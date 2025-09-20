@@ -2,7 +2,7 @@ import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import swaggerUi from 'swagger-ui-express';
 
-import { authRoutes, rolesRoutes, permissionsRoutes, oidcRoutes, usersRoutes, configRoutes, resourcesRoutes } from './routes';
+import { authRoutes, rolesRoutes, permissionsRoutes, oidcRoutes, usersRoutes, configRoutes, resourcesRoutes, userDetailsRoutes } from './routes';
 import { authGuard } from './middleware/auth.middleware';
 import { swaggerSpec } from './config/swagger';
 
@@ -29,6 +29,7 @@ app.use('/api/permissions', permissionsRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/config', configRoutes);
 app.use('/api/resources', resourcesRoutes);
+app.use('/api/user-details', userDetailsRoutes);
 app.use('/api', oidcRoutes); // OIDC routes under /api
 
 app.get('/health', (req: Request, res: Response) => {

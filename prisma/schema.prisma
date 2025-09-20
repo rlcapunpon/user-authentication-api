@@ -17,6 +17,23 @@ model User {
   credential    Credential?
   refreshTokens RefreshToken[]
   resourceRoles UserResourceRole[]
+  details       UserDetails?
+  subordinates  UserDetails[]      @relation("ManagerSubordinates")
+}
+
+model UserDetails {
+  id            String    @id
+  firstName     String?
+  lastName      String?
+  nickName      String?
+  contactNumber String?
+  reportToId    String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  user          User      @relation(fields: [id], references: [id], onDelete: Cascade)
+  reportTo      User?     @relation("ManagerSubordinates", fields: [reportToId], references: [id], onDelete: SetNull)
+
+  @@unique([id])
 }
 
 model Credential {

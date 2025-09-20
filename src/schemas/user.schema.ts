@@ -5,6 +5,11 @@ export const createUserSchema = z.object({
     email: z.string().email(),
     password: z.string().min(6),
     isSuperAdmin: z.boolean().optional(),
+    firstName: z.string().optional(),
+    lastName: z.string().optional(),
+    nickName: z.string().optional(),
+    contactNumber: z.string().optional(),
+    reportTo: z.string().uuid('Invalid reportTo user ID format').optional(),
   }),
 });
 
@@ -57,5 +62,34 @@ export const userResourceRoleSchema = z.object({
   params: z.object({
     userId: z.string().uuid(),
     resourceId: z.string(), // Allow any string format (CUID from Prisma)
+  }),
+});
+
+export const createUserDetailsSchema = z.object({
+  body: z.object({
+    firstName: z.string().optional(),
+    lastName: z.string().optional(),
+    nickName: z.string().optional(),
+    contactNumber: z.string().optional(),
+    reportTo: z.string().uuid('Invalid reportTo user ID format').optional(),
+  }),
+});
+
+export const updateUserDetailsSchema = z.object({
+  body: z.object({
+    firstName: z.string().optional(),
+    lastName: z.string().optional(),
+    nickName: z.string().optional(),
+    contactNumber: z.string().optional(),
+    reportTo: z.string().uuid('Invalid reportTo user ID format').optional(),
+  }),
+  params: z.object({
+    id: z.string().uuid('Invalid user ID format'),
+  }),
+});
+
+export const userDetailsIdSchema = z.object({
+  params: z.object({
+    id: z.string().uuid('Invalid user ID format'),
   }),
 });

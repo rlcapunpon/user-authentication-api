@@ -146,6 +146,61 @@ async function main() {
     },
   });
 
+  // Create UserDetails for all users
+  console.log('Creating user details...');
+
+  await (prisma as any).userDetails.upsert({
+    where: { id: superAdminUser.id },
+    update: {},
+    create: {
+      id: superAdminUser.id,
+      firstName: 'Super',
+      lastName: 'Admin',
+      nickName: 'Boss',
+      contactNumber: '+1-555-0100',
+      reportToId: null, // SuperAdmin doesn't report to anyone
+    },
+  });
+
+  await (prisma as any).userDetails.upsert({
+    where: { id: approverUser.id },
+    update: {},
+    create: {
+      id: approverUser.id,
+      firstName: 'John',
+      lastName: 'Approver',
+      nickName: 'Approver',
+      contactNumber: '+1-555-0101',
+      reportToId: superAdminUser.id, // Reports to SuperAdmin
+    },
+  });
+
+  await (prisma as any).userDetails.upsert({
+    where: { id: staffUser.id },
+    update: {},
+    create: {
+      id: staffUser.id,
+      firstName: 'Jane',
+      lastName: 'Staff',
+      nickName: 'Staff',
+      contactNumber: '+1-555-0102',
+      reportToId: approverUser.id, // Reports to Approver
+    },
+  });
+
+  await (prisma as any).userDetails.upsert({
+    where: { id: clientUser.id },
+    update: {},
+    create: {
+      id: clientUser.id,
+      firstName: 'Bob',
+      lastName: 'Client',
+      nickName: 'Client',
+      contactNumber: '+1-555-0103',
+      reportToId: staffUser.id, // Reports to Staff
+    },
+  });
+
   // Assign users to global roles
   console.log('Assigning users to global roles...');
 

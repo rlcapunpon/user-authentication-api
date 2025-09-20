@@ -5,3 +5,4 @@ export { default as oidcRoutes } from './oidc.routes';
 export { default as usersRoutes } from './users.routes';
 export { default as configRoutes } from './config.routes';
 export { default as resourcesRoutes } from './resources.routes';
+export { default as userDetailsRoutes } from './userDetails.routes';

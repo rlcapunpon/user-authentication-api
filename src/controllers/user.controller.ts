@@ -27,8 +27,17 @@ export const getUser = async (req: Request, res: Response) => {
 
 export const createUser = async (req: Request, res: Response) => {
   try {
-    const { email, password, isSuperAdmin } = req.body;
-    const user = await userService.createUser(email, password, isSuperAdmin || false);
+    const { email, password, isSuperAdmin, firstName, lastName, nickName, contactNumber, reportTo } = req.body;
+    const user = await userService.createUser(
+      email,
+      password,
+      isSuperAdmin || false,
+      firstName,
+      lastName,
+      nickName,
+      contactNumber,
+      reportTo
+    );
     res.status(201).json(user);
   } catch (error) {
     handleUnknownError(error, res, 400);

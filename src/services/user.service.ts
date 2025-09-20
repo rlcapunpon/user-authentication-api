@@ -1,7 +1,16 @@
 import { prisma } from '../db';
 import { hashPassword, comparePassword } from '../utils/crypto';
 
-export const createUser = async (email: string, password: string, isSuperAdmin: boolean = false) => {
+export const createUser = async (
+  email: string,
+  password: string,
+  isSuperAdmin: boolean = false,
+  firstName?: string,
+  lastName?: string,
+  nickName?: string,
+  contactNumber?: string,
+  reportTo?: string
+) => {
   const hashedPassword = await hashPassword(password);
   return prisma.user.create({
     data: {
@@ -12,9 +21,19 @@ export const createUser = async (email: string, password: string, isSuperAdmin: 
           passwordHash: hashedPassword,
         },
       },
+      details: {
+        create: {
+          firstName,
+          lastName,
+          nickName,
+          contactNumber,
+          reportToId: reportTo,
+        },
+      },
     },
     include: {
       resourceRoles: true,
+      details: true,
     },
   });
 };

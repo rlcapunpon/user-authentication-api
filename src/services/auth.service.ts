@@ -60,6 +60,27 @@ export const getMe = async (userId: string) => {
       isSuperAdmin: true,
       createdAt: true,
       updatedAt: true,
+      details: {
+        select: {
+          firstName: true,
+          lastName: true,
+          nickName: true,
+          contactNumber: true,
+          reportTo: {
+            select: {
+              id: true,
+              email: true,
+              details: {
+                select: {
+                  firstName: true,
+                  lastName: true,
+                  nickName: true
+                }
+              }
+            }
+          }
+        }
+      },
       resourceRoles: {
         select: {
           resourceId: true,
@@ -83,6 +104,19 @@ export const getMe = async (userId: string) => {
     isSuperAdmin: me.isSuperAdmin,
     createdAt: me.createdAt,
     updatedAt: me.updatedAt,
+    details: me.details ? {
+      firstName: me.details.firstName,
+      lastName: me.details.lastName,
+      nickName: me.details.nickName,
+      contactNumber: me.details.contactNumber,
+      reportTo: me.details.reportTo ? {
+        id: me.details.reportTo.id,
+        email: me.details.reportTo.email,
+        firstName: me.details.reportTo.details?.firstName,
+        lastName: me.details.reportTo.details?.lastName,
+        nickName: me.details.reportTo.details?.nickName
+      } : null
+    } : null,
     resources: me.resourceRoles.map((rr: any) => ({
       resourceId: rr.resourceId,
       role: rr.role.name
