@@ -14,7 +14,6 @@ async function main() {
   let superAdminRole = await (prisma as any).role.findFirst({
     where: {
       name: 'SUPERADMIN',
-      resourceId: null,
     },
   });
 
@@ -23,7 +22,6 @@ async function main() {
       data: {
         name: 'SUPERADMIN',
         description: 'Global super admin role with full system access',
-        resourceId: null,
         permissions: [
           'create_user',
           'read_users',
@@ -46,7 +44,6 @@ async function main() {
   let approverRole = await (prisma as any).role.findFirst({
     where: {
       name: 'APPROVER',
-      resourceId: null,
     },
   });
 
@@ -55,7 +52,6 @@ async function main() {
       data: {
         name: 'APPROVER',
         description: 'Role for approving requests and managing workflows',
-        resourceId: null,
         permissions: ['approve_requests', 'read_users', 'read_permissions', 'manage_workflows'],
       },
     });
@@ -64,7 +60,6 @@ async function main() {
   let staffRole = await (prisma as any).role.findFirst({
     where: {
       name: 'STAFF',
-      resourceId: null,
     },
   });
 
@@ -73,7 +68,6 @@ async function main() {
       data: {
         name: 'STAFF',
         description: 'General staff role for operational tasks',
-        resourceId: null,
         permissions: ['read_users', 'read_permissions', 'create_requests', 'update_profile'],
       },
     });
@@ -82,7 +76,6 @@ async function main() {
   let clientRole = await (prisma as any).role.findFirst({
     where: {
       name: 'CLIENT',
-      resourceId: null,
     },
   });
 
@@ -91,7 +84,6 @@ async function main() {
       data: {
         name: 'CLIENT',
         description: 'Client role for accessing services and submitting requests',
-        resourceId: null,
         permissions: ['read_own_data', 'create_requests', 'update_profile'],
       },
     });
@@ -212,6 +204,147 @@ async function main() {
         resourceId: null,
       },
     });
+  }
+
+  // Create Resources (departments/projects/organizations)
+  console.log('Creating resources...');
+
+  const resources = [
+    {
+      name: 'HR_DEPARTMENT',
+      description: 'Human Resources Department',
+    },
+    {
+      name: 'IT_DEPARTMENT',
+      description: 'Information Technology Department',
+    },
+    {
+      name: 'FINANCE_DEPARTMENT',
+      description: 'Finance and Accounting Department',
+    },
+    {
+      name: 'MARKETING_DEPARTMENT',
+      description: 'Marketing and Sales Department',
+    },
+    {
+      name: 'PROJECT_ALPHA',
+      description: 'Alpha Project - Main product development',
+    },
+    {
+      name: 'PROJECT_BETA',
+      description: 'Beta Project - Research and development',
+    },
+  ];
+
+  const createdResources = [];
+  for (const resourceData of resources) {
+    const resource = await (prisma as any).resource.upsert({
+      where: { name: resourceData.name },
+      update: {},
+      create: resourceData,
+    });
+    createdResources.push(resource);
+  }
+
+  // Create UserResourceRole mappings (users to roles for specific resources)
+  console.log('Creating user-resource-role mappings...');
+
+  // SuperAdmin gets all roles for all resources
+  for (const resource of createdResources) {
+    for (const role of [superAdminRole, approverRole, staffRole, clientRole]) {
+      const existingMapping = await (prisma as any).userResourceRole.findFirst({
+        where: {
+          userId: superAdminUser.id,
+          roleId: role.id,
+          resourceId: resource.id,
+        },
+      });
+
+      if (!existingMapping) {
+        await (prisma as any).userResourceRole.create({
+          data: {
+            userId: superAdminUser.id,
+            roleId: role.id,
+            resourceId: resource.id,
+          },
+        });
+      }
+    }
+  }
+
+  // Approver gets APPROVER role for HR, Finance, and Marketing departments
+  const approverResources = createdResources.filter(r =>
+    ['HR_DEPARTMENT', 'FINANCE_DEPARTMENT', 'MARKETING_DEPARTMENT'].includes(r.name)
+  );
+
+  for (const resource of approverResources) {
+    const existingMapping = await (prisma as any).userResourceRole.findFirst({
+      where: {
+        userId: approverUser.id,
+        roleId: approverRole.id,
+        resourceId: resource.id,
+      },
+    });
+
+    if (!existingMapping) {
+      await (prisma as any).userResourceRole.create({
+        data: {
+          userId: approverUser.id,
+          roleId: approverRole.id,
+          resourceId: resource.id,
+        },
+      });
+    }
+  }
+
+  // Staff gets STAFF role for IT Department and both projects
+  const staffResources = createdResources.filter(r =>
+    ['IT_DEPARTMENT', 'PROJECT_ALPHA', 'PROJECT_BETA'].includes(r.name)
+  );
+
+  for (const resource of staffResources) {
+    const existingMapping = await (prisma as any).userResourceRole.findFirst({
+      where: {
+        userId: staffUser.id,
+        roleId: staffRole.id,
+        resourceId: resource.id,
+      },
+    });
+
+    if (!existingMapping) {
+      await (prisma as any).userResourceRole.create({
+        data: {
+          userId: staffUser.id,
+          roleId: staffRole.id,
+          resourceId: resource.id,
+        },
+      });
+    }
+  }
+
+  // Client gets CLIENT role for Marketing Department and Project Alpha
+  const clientResources = createdResources.filter(r =>
+    ['MARKETING_DEPARTMENT', 'PROJECT_ALPHA'].includes(r.name)
+  );
+
+  for (const resource of clientResources) {
+    const existingMapping = await (prisma as any).userResourceRole.findFirst({
+      where: {
+        userId: clientUser.id,
+        roleId: clientRole.id,
+        resourceId: resource.id,
+      },
+    });
+
+    if (!existingMapping) {
+      await (prisma as any).userResourceRole.create({
+        data: {
+          userId: clientUser.id,
+          roleId: clientRole.id,
+          resourceId: resource.id,
+        },
+      });
+    }
   }
 
   console.log('✅ Seeding completed successfully');

@@ -32,20 +32,17 @@ model Resource {
   description String?
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
-  roles       Role[]
   userRoles   UserResourceRole[]
 }
 
 model Role {
   id          String             @id @default(cuid())
-  name        String
+  name        String             @unique
   description String?
-  resourceId  String?
   permissions String[]
-  resource    Resource?          @relation(fields: [resourceId], references: [id], onDelete: Cascade)
   userRoles   UserResourceRole[]
 
-  @@unique([name, resourceId])
+  @@unique([name], map: "Role_name_unique")
 }
 
 model UserResourceRole {

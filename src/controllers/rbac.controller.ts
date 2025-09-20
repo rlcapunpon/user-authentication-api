@@ -57,8 +57,8 @@ export const createResource = async (req: Request, res: Response) => {
  */
 export const createRole = async (req: Request, res: Response) => {
   try {
-    const { name, permissions, resourceId, description } = req.body;
-    const role = await rbacService.createRole(name, permissions, resourceId, description);
+    const { name, permissions, description } = req.body;
+    const role = await rbacService.createRole(name, permissions, description);
     res.status(201).json(role);
   } catch (error) {
     console.error('Error creating role:', error);

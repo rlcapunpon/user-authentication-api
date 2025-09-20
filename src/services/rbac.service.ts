@@ -3,17 +3,48 @@ import { prisma } from '../db';
 export const getAllRoles = () => {
   return prisma.role.findMany({
     include: {
-      resource: true,
+      userRoles: {
+        include: {
+          user: true,
+          resource: true,
+        },
+      },
     },
   });
 };
 
 export const getRolesByResource = (resourceId?: string) => {
-  const whereClause = resourceId ? { resourceId } : {};
+  if (!resourceId) {
+    return prisma.role.findMany({
+      include: {
+        userRoles: {
+          include: {
+            user: true,
+            resource: true,
+          },
+        },
+      },
+    });
+  }
+
   return prisma.role.findMany({
-    where: whereClause,
+    where: {
+      userRoles: {
+        some: {
+          resourceId: resourceId,
+        },
+      },
+    },
     include: {
-      resource: true,
+      userRoles: {
+        include: {
+          user: true,
+          resource: true,
+        },
+        where: {
+          resourceId: resourceId,
+        },
+      },
     },
   });
 };
@@ -21,7 +52,12 @@ export const getRolesByResource = (resourceId?: string) => {
 export const getAllResources = () => {
   return prisma.resource.findMany({
     include: {
-      roles: true,
+      userRoles: {
+        include: {
+          role: true,
+          user: true,
+        },
+      },
     },
   });
 };
@@ -35,12 +71,11 @@ export const createResource = (name: string, description?: string) => {
   });
 };
 
-export const createRole = (name: string, permissions: string[], resourceId?: string, description?: string) => {
+export const createRole = (name: string, permissions: string[], description?: string) => {
   return prisma.role.create({
     data: {
       name,
       permissions,
-      resourceId,
       description,
     },
   });
@@ -53,7 +88,12 @@ export const createRole = (name: string, permissions: string[], resourceId?: str
 export const getAvailableRoles = () => {
   return prisma.role.findMany({
     include: {
-      resource: true,
+      userRoles: {
+        include: {
+          user: true,
+          resource: true,
+        },
+      },
     },
     orderBy: {
       name: 'asc',

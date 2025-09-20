@@ -60,7 +60,6 @@ describe('Permissions Endpoints', () => {
       data: {
         name: 'Read Permissions Role',
         description: 'Role with read_permissions',
-        resourceId: null, // Global role
         permissions: ['read_permissions'],
       },
     });
