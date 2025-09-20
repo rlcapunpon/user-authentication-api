@@ -8,17 +8,15 @@ datasource db {
 }
 
 model User {
-  id             String             @id @default(uuid())
-  email          String             @unique
-  isActive       Boolean            @default(true)
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @updatedAt
-  credential     Credential?
-  refreshTokens  RefreshToken[]
-  resourceRoles  UserResourceRole[]
-
-  // SuperAdmin flag
-  isSuperAdmin   Boolean            @default(false)
+  id            String             @id @default(uuid())
+  email         String             @unique
+  isActive      Boolean            @default(true)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  isSuperAdmin  Boolean            @default(false)
+  credential    Credential?
+  refreshTokens RefreshToken[]
+  resourceRoles UserResourceRole[]
 }
 
 model Credential {
@@ -43,31 +41,31 @@ model Role {
   name        String
   description String?
   resourceId  String?
+  permissions String[]
   resource    Resource?          @relation(fields: [resourceId], references: [id], onDelete: Cascade)
-  permissions String[]           // Array of permission strings
   userRoles   UserResourceRole[]
 
-  @@unique([name, resourceId]) // role name unique per resource
+  @@unique([name, resourceId])
 }
 
 model UserResourceRole {
   id         String    @id @default(cuid())
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId     String
-  resource   Resource? @relation(fields: [resourceId], references: [id], onDelete: Cascade)
   resourceId String?
-  role       Role      @relation(fields: [roleId], references: [id], onDelete: Cascade)
   roleId     String
+  resource   Resource? @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  role       Role      @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, roleId, resourceId]) // unique role per resource per user
+  @@unique([userId, roleId, resourceId])
 }
 
 model RefreshToken {
-  id        String   @id @default(cuid())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String    @id @default(cuid())
   userId    String
   tokenHash String
   expiresAt DateTime
   revokedAt DateTime?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

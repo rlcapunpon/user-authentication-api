@@ -10,19 +10,6 @@ async function hashPassword(password: string): Promise<string> {
 async function main() {
   console.log('Seeding...');
 
-  // Create Resources
-  const orgResource = await (prisma as any).resource.upsert({
-    where: { name: 'Organization' },
-    update: {},
-    create: { name: 'Organization', description: 'Company organization' },
-  });
-
-  const projectResource = await (prisma as any).resource.upsert({
-    where: { name: 'Project' },
-    update: {},
-    create: { name: 'Project', description: 'Development project' },
-  });
-
   // Create global roles (no resource association) - check if they exist first
   let superAdminRole = await (prisma as any).role.findFirst({
     where: {
@@ -35,7 +22,7 @@ async function main() {
     superAdminRole = await (prisma as any).role.create({
       data: {
         name: 'SUPERADMIN',
-        description: 'Global super admin role',
+        description: 'Global super admin role with full system access',
         resourceId: null,
         permissions: [
           'create_user',
@@ -47,96 +34,70 @@ async function main() {
           'read_resources',
           'create_resource',
           'read_permissions',
-          'manage_resource_roles'
+          'manage_resource_roles',
+          'approve_requests',
+          'manage_staff',
+          'manage_clients'
         ],
       },
     });
   }
 
-  let supportRole = await (prisma as any).role.findFirst({
+  let approverRole = await (prisma as any).role.findFirst({
     where: {
-      name: 'SUPPORT',
+      name: 'APPROVER',
       resourceId: null,
     },
   });
 
-  if (!supportRole) {
-    supportRole = await (prisma as any).role.create({
+  if (!approverRole) {
+    approverRole = await (prisma as any).role.create({
       data: {
-        name: 'SUPPORT',
-        description: 'Global support role',
+        name: 'APPROVER',
+        description: 'Role for approving requests and managing workflows',
         resourceId: null,
-        permissions: ['read_users', 'read_permissions'],
+        permissions: ['approve_requests', 'read_users', 'read_permissions', 'manage_workflows'],
       },
     });
   }
 
-  // Create resource-specific roles
-  const orgAdminRole = await (prisma as any).role.upsert({
+  let staffRole = await (prisma as any).role.findFirst({
     where: {
-      name_resourceId: {
-        name: 'ADMIN',
-        resourceId: orgResource.id,
-      },
-    },
-    update: {},
-    create: {
-      name: 'ADMIN',
-      description: 'Organization admin role',
-      resourceId: orgResource.id,
-      permissions: ['read', 'write', 'update', 'delete', 'manage_users'],
+      name: 'STAFF',
+      resourceId: null,
     },
   });
 
-  const orgMemberRole = await (prisma as any).role.upsert({
-    where: {
-      name_resourceId: {
-        name: 'MEMBER',
-        resourceId: orgResource.id,
+  if (!staffRole) {
+    staffRole = await (prisma as any).role.create({
+      data: {
+        name: 'STAFF',
+        description: 'General staff role for operational tasks',
+        resourceId: null,
+        permissions: ['read_users', 'read_permissions', 'create_requests', 'update_profile'],
       },
-    },
-    update: {},
-    create: {
-      name: 'MEMBER',
-      description: 'Organization member role',
-      resourceId: orgResource.id,
-      permissions: ['read'],
+    });
+  }
+
+  let clientRole = await (prisma as any).role.findFirst({
+    where: {
+      name: 'CLIENT',
+      resourceId: null,
     },
   });
 
-  const projectManagerRole = await (prisma as any).role.upsert({
-    where: {
-      name_resourceId: {
-        name: 'MANAGER',
-        resourceId: projectResource.id,
+  if (!clientRole) {
+    clientRole = await (prisma as any).role.create({
+      data: {
+        name: 'CLIENT',
+        description: 'Client role for accessing services and submitting requests',
+        resourceId: null,
+        permissions: ['read_own_data', 'create_requests', 'update_profile'],
       },
-    },
-    update: {},
-    create: {
-      name: 'MANAGER',
-      description: 'Project manager role',
-      resourceId: projectResource.id,
-      permissions: ['read', 'write', 'update', 'manage_tasks', 'assign_users'],
-    },
-  });
+    });
+  }
 
-  const projectContributorRole = await (prisma as any).role.upsert({
-    where: {
-      name_resourceId: {
-        name: 'CONTRIBUTOR',
-        resourceId: projectResource.id,
-      },
-    },
-    update: {},
-    create: {
-      name: 'CONTRIBUTOR',
-      description: 'Project contributor role',
-      resourceId: projectResource.id,
-      permissions: ['read', 'write'],
-    },
-  });
-
-  // Create users with super admin flag
+  // Create users for each role
   const superAdminUser = await (prisma as any).user.upsert({
     where: { email: 'superadmin@example.com' },
     update: {},
@@ -151,11 +112,11 @@ async function main() {
     },
   });
 
-  const orgAdminUser = await (prisma as any).user.upsert({
-    where: { email: 'orgadmin@example.com' },
+  const approverUser = await (prisma as any).user.upsert({
+    where: { email: 'approver@example.com' },
     update: {},
     create: {
-      email: 'orgadmin@example.com',
+      email: 'approver@example.com',
       isSuperAdmin: false,
       credential: {
         create: {
@@ -165,28 +126,11 @@ async function main() {
     },
   });
 
-  // Assign roles to users (org admin gets org admin role)
-  await (prisma as any).userResourceRole.upsert({
-    where: {
-      userId_roleId_resourceId: {
-        userId: orgAdminUser.id,
-        roleId: orgAdminRole.id,
-        resourceId: orgResource.id,
-      },
-    },
+  const staffUser = await (prisma as any).user.upsert({
+    where: { email: 'staff@example.com' },
     update: {},
     create: {
-      userId: orgAdminUser.id,
-      roleId: orgAdminRole.id,
-      resourceId: orgResource.id,
-    },
-  });
-
-  const projectManagerUser = await (prisma as any).user.upsert({
-    where: { email: 'projectmanager@example.com' },
-    update: {},
-    create: {
-      email: 'projectmanager@example.com',
+      email: 'staff@example.com',
       isSuperAdmin: false,
       credential: {
         create: {
@@ -196,39 +140,79 @@ async function main() {
     },
   });
 
-  // Assign project manager role
-  await (prisma as any).userResourceRole.upsert({
-    where: {
-      userId_roleId_resourceId: {
-        userId: projectManagerUser.id,
-        roleId: projectManagerRole.id,
-        resourceId: projectResource.id,
-      },
-    },
+  const clientUser = await (prisma as any).user.upsert({
+    where: { email: 'client@example.com' },
     update: {},
     create: {
-      userId: projectManagerUser.id,
-      roleId: projectManagerRole.id,
-      resourceId: projectResource.id,
+      email: 'client@example.com',
+      isSuperAdmin: false,
+      credential: {
+        create: {
+          passwordHash: await hashPassword('password'),
+        },
+      },
     },
   });
 
-  // Also give project manager org member role
-  await (prisma as any).userResourceRole.upsert({
+  // Assign users to global roles
+  console.log('Assigning users to global roles...');
+
+  // Assign approver role to approver user (global)
+  const existingApproverRole = await (prisma as any).userResourceRole.findFirst({
     where: {
-      userId_roleId_resourceId: {
-        userId: projectManagerUser.id,
-        roleId: orgMemberRole.id,
-        resourceId: orgResource.id,
-      },
-    },
-    update: {},
-    create: {
-      userId: projectManagerUser.id,
-      roleId: orgMemberRole.id,
-      resourceId: orgResource.id,
+      userId: approverUser.id,
+      roleId: approverRole.id,
+      resourceId: null,
     },
   });
+
+  if (!existingApproverRole) {
+    await (prisma as any).userResourceRole.create({
+      data: {
+        userId: approverUser.id,
+        roleId: approverRole.id,
+        resourceId: null,
+      },
+    });
+  }
+
+  // Assign staff role to staff user (global)
+  const existingStaffRole = await (prisma as any).userResourceRole.findFirst({
+    where: {
+      userId: staffUser.id,
+      roleId: staffRole.id,
+      resourceId: null,
+    },
+  });
+
+  if (!existingStaffRole) {
+    await (prisma as any).userResourceRole.create({
+      data: {
+        userId: staffUser.id,
+        roleId: staffRole.id,
+        resourceId: null,
+      },
+    });
+  }
+
+  // Assign client role to client user (global)
+  const existingClientRole = await (prisma as any).userResourceRole.findFirst({
+    where: {
+      userId: clientUser.id,
+      roleId: clientRole.id,
+      resourceId: null,
+    },
+  });
+
+  if (!existingClientRole) {
+    await (prisma as any).userResourceRole.create({
+      data: {
+        userId: clientUser.id,
+        roleId: clientRole.id,
+        resourceId: null,
+      },
+    });
+  }
 
   console.log('✅ Seeding completed successfully');
 }

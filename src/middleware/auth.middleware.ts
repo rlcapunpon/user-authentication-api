@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyToken } from '../utils/jwt';
 import { findUserById } from '../services/user.service';
+import { logger } from '../utils/logger';
 
 // Extend the Request type to include a user property
 declare global {
@@ -24,17 +25,44 @@ export const authGuard = async (req: Request, res: Response, next: NextFunction)
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      logger.debug({
+        msg: 'Authentication failed: No token provided',
+        ip: req.ip,
+        userAgent: req.get('User-Agent'),
+        path: req.path,
+        method: req.method,
+      });
       return res.status(401).json({ message: 'No token provided' });
     }
 
     const token = authHeader.split(' ')[1];
     const decoded = verifyToken(token) as { userId: string };
 
-    console.log('AuthGuard: Decoded userId from token:', decoded.userId);
+    logger.debug({
+      msg: 'AuthGuard: Decoded userId from token',
+      userId: decoded.userId,
+      ip: req.ip,
+      path: req.path,
+    });
+
     const user = await findUserById(decoded.userId);
-    console.log('AuthGuard: User found by ID:', user ? user.id : 'null');
+    logger.debug({
+      msg: 'AuthGuard: User lookup result',
+      userId: decoded.userId,
+      userFound: !!user,
+      isActive: user?.isActive,
+      ip: req.ip,
+    });
 
     if (!user || !user.isActive) {
+      logger.debug({
+        msg: 'Authentication failed: User not found or inactive',
+        userId: decoded.userId,
+        userFound: !!user,
+        isActive: user?.isActive,
+        ip: req.ip,
+        userAgent: req.get('User-Agent'),
+      });
       return res.status(401).json({ message: 'User not found or inactive' });
     }
 
@@ -47,13 +75,30 @@ export const authGuard = async (req: Request, res: Response, next: NextFunction)
       permissions: userResourceRole.role.permissions || [],
     })) || [];
 
-    req.user = { 
-      userId: user.id, 
+    req.user = {
+      userId: user.id,
       isSuperAdmin: userWithRoles.isSuperAdmin || false,
-      resourceRoles 
+      resourceRoles
     };
+
+    logger.debug({
+      msg: 'Authentication successful',
+      userId: user.id,
+      isSuperAdmin: userWithRoles.isSuperAdmin || false,
+      roleCount: resourceRoles.length,
+      ip: req.ip,
+    });
+
     next();
   } catch (error) {
+    logger.debug({
+      msg: 'Authentication failed: Token verification error',
+      error: error instanceof Error ? error.message : 'Unknown error',
+      ip: req.ip,
+      userAgent: req.get('User-Agent'),
+      path: req.path,
+      method: req.method,
+    });
     console.error('Auth guard error:', error);
     res.status(401).json({ message: 'Invalid token' });
   }

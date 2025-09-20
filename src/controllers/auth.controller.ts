@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import * as authService from '../services/auth.service';
 import * as userService from '../services/user.service'; // Import userService
+import { logger } from '../utils/logger';
 
 export const handleUnknownError = (error: unknown, res: Response, statusCode: number) => {
   if (error instanceof Error) {
@@ -16,6 +17,13 @@ export const register = async (req: Request, res: Response) => {
     const user = await authService.register(email, password);
     res.status(201).json(user);
   } catch (error) {
+    logger.debug({
+      msg: 'Registration failed',
+      email: req.body.email,
+      ip: req.ip,
+      userAgent: req.get('User-Agent'),
+      reason: error instanceof Error ? error.message : 'Unknown error',
+    });
     handleUnknownError(error, res, 400);
   }
 };
@@ -26,6 +34,13 @@ export const login = async (req: Request, res: Response) => {
     const tokens = await authService.login(email, password);
     res.json(tokens);
   } catch (error) {
+    logger.debug({
+      msg: 'Login failed',
+      email: req.body.email,
+      ip: req.ip,
+      userAgent: req.get('User-Agent'),
+      reason: error instanceof Error ? error.message : 'Unknown error',
+    });
     handleUnknownError(error, res, 401);
   }
 };
