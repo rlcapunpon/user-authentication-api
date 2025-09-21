@@ -11,10 +11,15 @@ export const generateAuthTokens = async (user: UserWithRoles) => {
     },
   });
 
+  // Extract only essential permission data to keep JWT small
+  const userPermissions = user.isSuperAdmin 
+    ? ['*'] // SuperAdmin has all permissions
+    : [...new Set(user.resourceRoles.flatMap(role => role.role.permissions))]; // Unique permissions only
+
   const accessToken = generateAccessToken({ 
     userId: user.id, 
     isSuperAdmin: user.isSuperAdmin,
-    resourceRoles: user.resourceRoles || []
+    permissions: userPermissions // Much smaller than full resourceRoles objects
   });
   const jwtRefreshToken = generateJwtRefreshToken({ userId: user.id, jti: refreshToken.id });
 
@@ -25,9 +30,18 @@ export const findRefreshTokenById = (id: string) => {
   return prisma.refreshToken.findUnique({ where: { id } });
 };
 
-export const revokeRefreshToken = (id: string) => {
-  return prisma.refreshToken.update({
-    where: { id },
-    data: { revokedAt: new Date() },
-  });
+export const revokeRefreshToken = async (id: string) => {
+  try {
+    return await prisma.refreshToken.update({
+      where: { id },
+      data: { revokedAt: new Date() },
+    });
+  } catch (error: any) {
+    // If the token doesn't exist (P2025 error), treat it as already revoked
+    if (error.code === 'P2025') {
+      // Token is already effectively revoked (doesn't exist)
+      return null;
+    }
+    throw error;
+  }
 };

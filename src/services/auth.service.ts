@@ -109,8 +109,18 @@ export const login = async (email: string, password: string) => {
 };
 
 export const logout = async (refreshToken: string) => {
-  const payload = verifyToken(refreshToken) as { jti: string };
-  await revokeRefreshToken(payload.jti);
+  try {
+    const payload = verifyToken(refreshToken) as { jti: string };
+    await revokeRefreshToken(payload.jti);
+    // Logout is successful regardless of whether the token existed or not
+  } catch (error) {
+    // If token verification fails, we still consider logout successful
+    // since the token is effectively invalid
+    console.warn('Logout attempted with invalid token:', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString(),
+    });
+  }
 };
 
 export const refresh = async (refreshToken: string) => {

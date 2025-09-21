@@ -64,8 +64,16 @@ describe('Roles Endpoints', () => {
     });
     adminUserId = adminUser.id;
 
-    testUserToken = generateAccessToken({ userId: testUserId });
-    adminUserToken = generateAccessToken({ userId: adminUserId });
+    testUserToken = generateAccessToken({ 
+      userId: testUserId, 
+      isSuperAdmin: false,
+      permissions: ['role:read'] // Test user has read permission
+    });
+    adminUserToken = generateAccessToken({ 
+      userId: adminUserId, 
+      isSuperAdmin: true,
+      permissions: ['*'] // Admin has all permissions
+    });
 
     // Create test role with read_roles permission
     const readRolesRole = await (prisma as any).role.create({

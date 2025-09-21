@@ -214,15 +214,15 @@ describe('Authentication Endpoints', () => {
       // 204 No Content means no response body
     });
 
-    it('should fail with invalid refresh token', async () => {
+    it('should handle invalid refresh token gracefully (idempotent)', async () => {
       const response = await request(app)
         .post('/api/auth/logout')
         .send({
           refreshToken: 'invalid-refresh-token',
         })
-        .expect(400);
+        .expect(204);
 
-      expect(response.body).toHaveProperty('message');
+      // No response body for 204 status
     });
 
     it('should fail with missing refresh token', async () => {

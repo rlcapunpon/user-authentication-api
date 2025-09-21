@@ -10,12 +10,7 @@ declare global {
       user?: {
         userId: string;
         isSuperAdmin: boolean;
-        resourceRoles: {
-          resourceId: string;
-          roleId: string;
-          roleName: string;
-          permissions: string[];
-        }[];
+        permissions: string[];
       };
     }
   }
@@ -36,7 +31,12 @@ export const authGuard = async (req: Request, res: Response, next: NextFunction)
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded = verifyToken(token) as { userId: string };
+    const decoded = verifyToken(token) as { 
+      userId: string; 
+      isSuperAdmin?: boolean;
+      permissions?: string[];
+      resourceRoles?: any[]; // For backward compatibility
+    };
 
     logger.debug({
       msg: 'AuthGuard: Decoded userId from token',
@@ -66,26 +66,31 @@ export const authGuard = async (req: Request, res: Response, next: NextFunction)
       return res.status(401).json({ message: 'User not found or inactive' });
     }
 
-    // Get user's resource roles and permissions
-    const userWithRoles = user as any; // Type assertion until Prisma client is regenerated
-    const resourceRoles = userWithRoles.resourceRoles?.map((userResourceRole: any) => ({
-      resourceId: userResourceRole.resourceId,
-      roleId: userResourceRole.roleId,
-      roleName: userResourceRole.role.name,
-      permissions: userResourceRole.role.permissions || [],
-    })) || [];
+    // Handle both old and new token formats
+    let userPermissions: string[] = [];
+    const isSuperAdmin = decoded.isSuperAdmin || false;
+
+    if (isSuperAdmin) {
+      userPermissions = ['*'];
+    } else if (decoded.permissions) {
+      // New format: permissions directly in token
+      userPermissions = decoded.permissions;
+    } else if (decoded.resourceRoles) {
+      // Old format: extract from resourceRoles (for backward compatibility)
+      userPermissions = decoded.resourceRoles.flatMap((role: any) => role.permissions || []);
+    }
 
     req.user = {
       userId: user.id,
-      isSuperAdmin: userWithRoles.isSuperAdmin || false,
-      resourceRoles
+      isSuperAdmin,
+      permissions: userPermissions
     };
 
     logger.debug({
       msg: 'Authentication successful',
       userId: user.id,
-      isSuperAdmin: userWithRoles.isSuperAdmin || false,
-      roleCount: resourceRoles.length,
+      isSuperAdmin,
+      permissionCount: userPermissions.length,
       ip: req.ip,
     });
 

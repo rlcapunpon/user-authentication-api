@@ -138,10 +138,26 @@ describe('User Details Endpoints', () => {
     });
 
     // Generate tokens
-    testUserToken = generateAccessToken({ userId: testUserId });
-    adminUserToken = generateAccessToken({ userId: adminUserId });
-    managerUserToken = generateAccessToken({ userId: managerUserId });
-    subordinateUserToken = generateAccessToken({ userId: subordinateUserId });
+    testUserToken = generateAccessToken({ 
+      userId: testUserId, 
+      isSuperAdmin: false,
+      permissions: [] // Regular user has no permissions
+    });
+    adminUserToken = generateAccessToken({ 
+      userId: adminUserId, 
+      isSuperAdmin: true,
+      permissions: ['*'] // Admin has all permissions
+    });
+    managerUserToken = generateAccessToken({ 
+      userId: managerUserId, 
+      isSuperAdmin: false,
+      permissions: [] // Manager has no permissions
+    });
+    subordinateUserToken = generateAccessToken({ 
+      userId: subordinateUserId, 
+      isSuperAdmin: false,
+      permissions: [] // Subordinate has no permissions
+    });
   });
 
   afterAll(async () => {
@@ -562,7 +578,11 @@ describe('User Details Endpoints', () => {
         },
       });
 
-      const newUserToken = generateAccessToken({ userId: newUser.id });
+      const newUserToken = generateAccessToken({ 
+        userId: newUser.id, 
+        isSuperAdmin: false,
+        permissions: [] // New user has no permissions
+      });
 
       // 1. Get user details
       const getResponse = await request(app)
