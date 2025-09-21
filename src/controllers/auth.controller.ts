@@ -66,11 +66,72 @@ export const refresh = async (req: Request, res: Response) => {
 };
 
 export const getMe = async (req: Request, res: Response) => {
+  const userId = req.user!.userId;
+
+  logger.debug({
+    msg: 'GetMe endpoint called',
+    userId,
+    ip: req.ip,
+    userAgent: req.get('User-Agent'),
+    method: req.method,
+    path: req.path,
+    headers: {
+      'content-length': req.get('content-length'),
+      'content-type': req.get('content-type'),
+      'authorization': req.get('authorization') ? '[PRESENT]' : '[MISSING]',
+      'user-agent': req.get('user-agent'),
+    },
+  });
+
   try {
-    const userId = req.user!.userId;
     const user = await authService.getMe(userId);
+
+    logger.debug({
+      msg: 'GetMe successful',
+      userId,
+      ip: req.ip,
+      hasDetails: !!user.details,
+      hasReportTo: !!(user.details?.reportTo),
+      resourcesCount: user.resources?.length || 0,
+    });
+
+    const responseData = JSON.stringify(user);
+    logger.debug({
+      msg: 'GetMe response prepared',
+      userId,
+      ip: req.ip,
+      responseSize: responseData.length,
+    });
+
     res.json(user);
   } catch (error) {
+    logger.error({
+      msg: 'GetMe endpoint error',
+      userId,
+      ip: req.ip,
+      userAgent: req.get('User-Agent'),
+      method: req.method,
+      path: req.path,
+      error: error instanceof Error ? {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+      } : 'Unknown error',
+      statusCode: res.statusCode,
+    });
+
+    // Log additional context for 431 errors specifically
+    if (res.statusCode === 431 || (error instanceof Error && error.message.includes('431'))) {
+      logger.error({
+        msg: '431 Error details for GetMe',
+        userId,
+        ip: req.ip,
+        requestHeaders: req.headers,
+        requestSize: JSON.stringify(req.headers).length,
+        responseHeaders: res.getHeaders(),
+      });
+    }
+
     handleUnknownError(error, res, 400);
   }
 };

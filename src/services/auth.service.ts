@@ -51,77 +51,93 @@ export const refresh = async (refreshToken: string) => {
 };
 
 export const getMe = async (userId: string) => {
-  const me = await (prisma as any).user.findUnique({
-    where: { id: userId },
-    select: {
-      id: true,
-      email: true,
-      isActive: true,
-      isSuperAdmin: true,
-      createdAt: true,
-      updatedAt: true,
-      details: {
-        select: {
-          firstName: true,
-          lastName: true,
-          nickName: true,
-          contactNumber: true,
-          reportTo: {
-            select: {
-              id: true,
-              email: true,
-              details: {
-                select: {
-                  firstName: true,
-                  lastName: true,
-                  nickName: true
+  try {
+    const me = await (prisma as any).user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        isActive: true,
+        isSuperAdmin: true,
+        createdAt: true,
+        updatedAt: true,
+        details: {
+          select: {
+            firstName: true,
+            lastName: true,
+            nickName: true,
+            contactNumber: true,
+            reportTo: {
+              select: {
+                id: true,
+                email: true,
+                details: {
+                  select: {
+                    firstName: true,
+                    lastName: true,
+                    nickName: true
+                  }
                 }
               }
             }
           }
-        }
-      },
-      resourceRoles: {
-        select: {
-          resourceId: true,
-          role: {
-            select: { name: true }
+        },
+        resourceRoles: {
+          select: {
+            resourceId: true,
+            role: {
+              select: { name: true }
+            }
           }
         }
       }
+    });
+
+    if (!me) {
+      throw new Error('User not found');
     }
-  });
 
-  if (!me) {
-    throw new Error('User not found');
+    // Transform to match response structure
+    const transformedUser = {
+      id: me.id,
+      email: me.email,
+      isActive: me.isActive,
+      isSuperAdmin: me.isSuperAdmin,
+      createdAt: me.createdAt,
+      updatedAt: me.updatedAt,
+      details: me.details ? {
+        firstName: me.details.firstName,
+        lastName: me.details.lastName,
+        nickName: me.details.nickName,
+        contactNumber: me.details.contactNumber,
+        reportTo: me.details.reportTo ? {
+          id: me.details.reportTo.id,
+          email: me.details.reportTo.email,
+          firstName: me.details.reportTo.details?.firstName,
+          lastName: me.details.reportTo.details?.lastName,
+          nickName: me.details.reportTo.details?.nickName
+        } : null
+      } : null,
+      resources: me.resourceRoles.map((rr: any) => ({
+        resourceId: rr.resourceId,
+        role: rr.role.name
+      }))
+    };
+
+    return transformedUser;
+  } catch (error) {
+    // Log detailed error information for debugging
+    console.error('Error in getMe service:', {
+      userId,
+      error: error instanceof Error ? {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+      } : 'Unknown error',
+      timestamp: new Date().toISOString(),
+    });
+    throw error;
   }
-
-  // Transform to match response structure
-  return {
-    id: me.id,
-    email: me.email,
-    isActive: me.isActive,
-    isSuperAdmin: me.isSuperAdmin,
-    createdAt: me.createdAt,
-    updatedAt: me.updatedAt,
-    details: me.details ? {
-      firstName: me.details.firstName,
-      lastName: me.details.lastName,
-      nickName: me.details.nickName,
-      contactNumber: me.details.contactNumber,
-      reportTo: me.details.reportTo ? {
-        id: me.details.reportTo.id,
-        email: me.details.reportTo.email,
-        firstName: me.details.reportTo.details?.firstName,
-        lastName: me.details.reportTo.details?.lastName,
-        nickName: me.details.reportTo.details?.nickName
-      } : null
-    } : null,
-    resources: me.resourceRoles.map((rr: any) => ({
-      resourceId: rr.resourceId,
-      role: rr.role.name
-    }))
-  };
 };
 
 export const validate = (token: string) => {
