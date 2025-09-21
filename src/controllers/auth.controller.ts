@@ -265,6 +265,15 @@ export const verifyEmail = async (req: Request, res: Response) => {
       userAgent: req.get('User-Agent'),
     });
 
+    // Log the API response
+    logger.debug({
+      msg: 'Email verification API response',
+      verificationCode: verificationCode.substring(0, 8) + '...',
+      ip: req.ip,
+      statusCode: 200,
+      response: result,
+    });
+
     res.status(200).json(result);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -281,6 +290,15 @@ export const verifyEmail = async (req: Request, res: Response) => {
         name: error.name,
         message: error.message,
       } : 'Unknown error',
+    });
+
+    // Log the error response
+    logger.debug({
+      msg: 'Email verification API error response',
+      verificationCode: verificationCode.substring(0, 8) + '...',
+      ip: req.ip,
+      statusCode: 400,
+      response: { message: errorMessage },
     });
 
     handleUnknownError(error, res, 400);

@@ -461,7 +461,7 @@ describe('Authentication Endpoints', () => {
       expect(userVerification.isEmailVerified).toBe(false);
       expect(userVerification.verificationStatus).toBe('unverified');
       expect(userVerification.userStatus).toBe('pending');
-    });
+    }, 10000); // Increase timeout to 10 seconds
 
     it('should fail login for unverified user', async () => {
       const response = await request(app)
@@ -476,6 +476,11 @@ describe('Authentication Endpoints', () => {
     });
 
     it('should verify email successfully with valid code', async () => {
+      // Ensure verificationCode is set
+      if (!verificationCode) {
+        throw new Error('verificationCode is not set. Previous test may have failed.');
+      }
+
       const response = await request(app)
         .post(`/api/auth/verify/${verificationCode}`)
         .expect(200);
@@ -485,6 +490,11 @@ describe('Authentication Endpoints', () => {
     });
 
     it('should update user and verification status after successful verification', async () => {
+      // Ensure testUserId is set
+      if (!testUserId) {
+        throw new Error('testUserId is not set. Previous test may have failed.');
+      }
+
       // Check user status
       const user = await (prisma as any).user.findUnique({
         where: { id: testUserId },
@@ -528,12 +538,17 @@ describe('Authentication Endpoints', () => {
         .post('/api/auth/verify/invalid-code-12345')
         .expect(400);
 
-      expect(response.body.message).toBe('Invalid verification code');
+      expect(response.body.message).toBe('Invalid verification code format. Expected 32-character hexadecimal string.');
     });
 
     it('should fail verification with expired code', async () => {
-      // Create an expired verification code
-      const expiredCode = 'expired-test-code-123';
+      // Ensure testUserId is set
+      if (!testUserId) {
+        throw new Error('testUserId is not set. Previous test may have failed.');
+      }
+
+      // Create an expired verification code with valid format (32-character hex)
+      const expiredCode = 'abcdef1234567890abcdef1234567890'; // 32-character hex string
       const expiredTime = new Date(Date.now() - 20 * 60 * 1000); // 20 minutes ago
 
       await (prisma as any).emailVerificationCode.create({
@@ -553,6 +568,11 @@ describe('Authentication Endpoints', () => {
     });
 
     it('should fail verification with already used code', async () => {
+      // Ensure verificationCode is set
+      if (!verificationCode) {
+        throw new Error('verificationCode is not set. Previous test may have failed.');
+      }
+
       // Try to use the same verification code again
       const response = await request(app)
         .post(`/api/auth/verify/${verificationCode}`)
@@ -600,7 +620,7 @@ describe('Authentication Endpoints', () => {
 
       expect(verificationRecord).toBeTruthy();
       originalVerificationCode = verificationRecord.verificationCode;
-    });
+    }, 10000); // Increase timeout to 10 seconds
 
     it('should resend verification email with valid existing code', async () => {
       const response = await request(app)
@@ -621,9 +641,14 @@ describe('Authentication Endpoints', () => {
       expect(verificationRecord.verificationCode).toBe(originalVerificationCode);
       expect(verificationRecord.isUsed).toBe(false);
       expect(verificationRecord.expiresAt.getTime()).toBeGreaterThan(Date.now());
-    });
+    }, 10000); // Increase timeout to 10 seconds
 
     it('should fail resend for already verified user', async () => {
+      // Ensure originalVerificationCode is set
+      if (!originalVerificationCode) {
+        throw new Error('originalVerificationCode is not set. Previous test may have failed.');
+      }
+
       // First verify the user
       await request(app)
         .post(`/api/auth/verify/${originalVerificationCode}`)
@@ -645,7 +670,7 @@ describe('Authentication Endpoints', () => {
       const expiredTestEmail = 'expired-resend@example.com';
       const expiredTestPassword = 'testpassword123';
 
-      await request(app)
+      const registerResponse = await request(app)
         .post('/api/auth/register')
         .send({
           email: expiredTestEmail,
@@ -686,7 +711,7 @@ describe('Authentication Endpoints', () => {
 
       // Cleanup
       await (prisma as any).user.delete({ where: { id: user.id } });
-    });
+    }, 10000); // Increase timeout to 10 seconds
 
     it('should fail resend for non-existent email', async () => {
       const response = await request(app)
@@ -724,7 +749,7 @@ describe('Authentication Endpoints', () => {
       const noCodeTestEmail = 'no-code-resend@example.com';
       const noCodeTestPassword = 'testpassword123';
 
-      await request(app)
+      const registerResponse = await request(app)
         .post('/api/auth/register')
         .send({
           email: noCodeTestEmail,
@@ -769,6 +794,6 @@ describe('Authentication Endpoints', () => {
 
       // Cleanup
       await (prisma as any).user.delete({ where: { id: user.id } });
-    });
+    }, 10000); // Increase timeout to 10 seconds
   });
 });

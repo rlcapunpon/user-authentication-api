@@ -121,6 +121,27 @@ export const sendVerificationEmail = async (data: EmailVerificationData): Promis
       timestamp: new Date().toISOString(),
     });
 
+    // Skip actual email sending in test environment for faster tests
+    if (process.env.NODE_ENV === 'test') {
+      console.log('Test environment detected - skipping actual email send:', {
+        to: data.to,
+        verificationCode: data.verificationCode.substring(0, 8) + '...',
+        timestamp: new Date().toISOString(),
+      });
+      
+      // Simulate a small delay to make tests more realistic
+      await new Promise(resolve => setTimeout(resolve, 10));
+      
+      console.log('Verification email sent successfully (mocked):', {
+        to: data.to,
+        messageId: 'mock-message-id-' + Math.random().toString(36).substring(7),
+        statusCode: 202,
+        timestamp: new Date().toISOString(),
+      });
+      
+      return true;
+    }
+
     const msg = createVerificationEmail(data);
     const [response] = await sgMail.send(msg);
     

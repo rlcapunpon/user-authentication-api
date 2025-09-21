@@ -10,4 +10,5 @@ export default {
     "^@src/(.*)$": "<rootDir>/src/$1",
     "^@tests/(.*)$": "<rootDir>/tests/$1",
   },
+  setupFiles: ['<rootDir>/tests/setup.ts'],
 };

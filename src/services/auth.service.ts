@@ -295,8 +295,22 @@ export const verifyEmail = async (verificationCode: string) => {
   try {
     console.log('Email verification attempt:', {
       verificationCode: verificationCode.substring(0, 8) + '...', // Log partial code for security
+      verificationCodeLength: verificationCode.length,
+      verificationCodeFormat: /^[a-f0-9]{32}$/.test(verificationCode) ? 'valid-hex-32' : 'invalid-format',
       timestamp: new Date().toISOString(),
     });
+
+    // Validate verification code format
+    if (!/^[a-f0-9]{32}$/.test(verificationCode)) {
+      console.warn('Email verification failed - invalid code format:', {
+        verificationCode: verificationCode.substring(0, 8) + '...',
+        expectedFormat: '32-character hexadecimal string (a-f, 0-9)',
+        actualLength: verificationCode.length,
+        actualFormat: verificationCode.replace(/[^a-f0-9]/gi, '').length === verificationCode.length ? 'hex-only' : 'contains-non-hex',
+        timestamp: new Date().toISOString(),
+      });
+      throw new Error('Invalid verification code format. Expected 32-character hexadecimal string.');
+    }
 
     // Find the verification code
     const verificationRecord = await findVerificationCode(verificationCode);
