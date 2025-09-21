@@ -60,7 +60,7 @@ describe('Permissions Endpoints', () => {
       data: {
         name: 'Read Permissions Role',
         description: 'Role with read_permissions',
-        permissions: ['read_permissions'],
+        permissions: ['permission:read'],
       },
     });
 
@@ -96,16 +96,16 @@ describe('Permissions Endpoints', () => {
 
       // Check that expected permissions are included
       const expectedPermissions = [
-        'read_users',
-        'create_user',
-        'update_users',
-        'delete_user',
-        'read_roles',
-        'create_role',
-        'read_resources',
-        'create_resource',
-        'read_permissions',
-        'manage_resource_roles'
+        'user:create',
+        'user:read',
+        'user:update',
+        'user:delete',
+        'role:read',
+        'role:create',
+        'resource:read',
+        'resource:create',
+        'permission:read',
+        'role:assign'
       ];
 
       expectedPermissions.forEach(permission => {
@@ -181,22 +181,22 @@ describe('Permissions Endpoints', () => {
       const permissions = response.body;
 
       // Check for user-related permissions
-      expect(permissions).toContain('read_users');
-      expect(permissions).toContain('create_user');
-      expect(permissions).toContain('update_users');
-      expect(permissions).toContain('delete_user');
+      expect(permissions).toContain('user:read');
+      expect(permissions).toContain('user:create');
+      expect(permissions).toContain('user:update');
+      expect(permissions).toContain('user:delete');
 
       // Check for role-related permissions
-      expect(permissions).toContain('read_roles');
-      expect(permissions).toContain('create_role');
+      expect(permissions).toContain('role:read');
+      expect(permissions).toContain('role:create');
 
       // Check for resource-related permissions
-      expect(permissions).toContain('read_resources');
-      expect(permissions).toContain('create_resource');
+      expect(permissions).toContain('resource:read');
+      expect(permissions).toContain('resource:create');
 
       // Check for general permissions
-      expect(permissions).toContain('read_permissions');
-      expect(permissions).toContain('manage_resource_roles');
+      expect(permissions).toContain('permission:read');
+      expect(permissions).toContain('role:assign');
     });
 
     it('should return permissions as strings', async () => {

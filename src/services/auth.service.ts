@@ -6,26 +6,106 @@ import { prisma } from '../db';
 import { UserWithRoles } from '../types/user';
 
 export const register = async (email: string, password: string) => {
-  const existingUser = await findUserByEmail(email);
-  if (existingUser) {
-    throw new Error('User already exists');
+  try {
+    console.log('Registration attempt:', {
+      email,
+      timestamp: new Date().toISOString(),
+      passwordLength: password ? password.length : 0,
+    });
+
+    const existingUser = await findUserByEmail(email);
+    if (existingUser) {
+      console.warn('Registration failed - user already exists:', {
+        email,
+        existingUserId: existingUser.id,
+        timestamp: new Date().toISOString(),
+      });
+      throw new Error('User already exists');
+    }
+
+    const user = await createUser(email, password);
+
+    console.log('Registration successful:', {
+      email,
+      userId: user.id,
+      timestamp: new Date().toISOString(),
+    });
+
+    return user;
+  } catch (error) {
+    // Re-throw the error after logging
+    throw error;
   }
-  const user = await createUser(email, password);
-  return user;
 };
 
 export const login = async (email: string, password: string) => {
-  const user = await findUserByEmail(email);
-  if (!user || !user.credential) {
-    throw new Error('Invalid credentials');
+  try {
+    // Log login attempt
+    console.log('Login attempt:', {
+      email,
+      timestamp: new Date().toISOString(),
+      passwordLength: password ? password.length : 0,
+    });
+
+    const user = await findUserByEmail(email);
+
+    if (!user) {
+      console.warn('Login failed - user not found:', {
+        email,
+        timestamp: new Date().toISOString(),
+        reason: 'User does not exist',
+      });
+      throw new Error('Invalid credentials');
+    }
+
+    if (!user.credential) {
+      console.warn('Login failed - no credential found:', {
+        email,
+        userId: user.id,
+        timestamp: new Date().toISOString(),
+        reason: 'User has no credential record',
+      });
+      throw new Error('Invalid credentials');
+    }
+
+    if (!user.isActive) {
+      console.warn('Login failed - user inactive:', {
+        email,
+        userId: user.id,
+        timestamp: new Date().toISOString(),
+        reason: 'User account is deactivated',
+      });
+      throw new Error('Account is deactivated');
+    }
+
+    const isPasswordValid = await comparePassword(password, user.credential.passwordHash);
+
+    if (!isPasswordValid) {
+      console.warn('Login failed - invalid password:', {
+        email,
+        userId: user.id,
+        timestamp: new Date().toISOString(),
+        reason: 'Password verification failed',
+        passwordLength: password ? password.length : 0,
+      });
+      throw new Error('Invalid credentials');
+    }
+
+    const userWithRoles = await findUserById(user.id);
+    const { accessToken, refreshToken } = await generateAuthTokens(userWithRoles as UserWithRoles);
+
+    console.log('Login successful:', {
+      email,
+      userId: user.id,
+      isSuperAdmin: userWithRoles?.isSuperAdmin || false,
+      timestamp: new Date().toISOString(),
+    });
+
+    return { accessToken, refreshToken };
+  } catch (error) {
+    // Re-throw the error after logging
+    throw error;
   }
-  const isPasswordValid = await comparePassword(password, user.credential.passwordHash);
-  if (!isPasswordValid) {
-    throw new Error('Invalid credentials');
-  }
-  const userWithRoles = await findUserById(user.id);
-  const { accessToken, refreshToken } = await generateAuthTokens(userWithRoles as UserWithRoles);
-  return { accessToken, refreshToken };
 };
 
 export const logout = async (refreshToken: string) => {

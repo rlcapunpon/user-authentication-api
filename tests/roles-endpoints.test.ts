@@ -72,7 +72,7 @@ describe('Roles Endpoints', () => {
       data: {
         name: 'Read Roles Role',
         description: 'Role with read_roles permission',
-        permissions: ['read_roles'],
+        permissions: ['role:read'],
       },
     });
 
@@ -81,7 +81,7 @@ describe('Roles Endpoints', () => {
       data: {
         name: 'Create Role Role',
         description: 'Role with create_role permission',
-        permissions: ['create_role'],
+        permissions: ['role:create'],
       },
     });
 
@@ -108,7 +108,7 @@ describe('Roles Endpoints', () => {
       data: {
         name: 'Test Role',
         description: 'A test role',
-        permissions: ['read_users', 'create_user'],
+        permissions: ['user:read', 'user:create'],
       },
     });
     testRoleId = testRole.id;
@@ -138,7 +138,7 @@ describe('Roles Endpoints', () => {
       const testRole = response.body.find((role: any) => role.id === testRoleId);
       expect(testRole).toBeDefined();
       expect(testRole.name).toBe('Test Role');
-      expect(testRole.permissions).toEqual(['read_users', 'create_user']);
+      expect(testRole.permissions).toEqual(['user:read', 'user:create']);
       // Roles are now global, so no resourceId
       expect(testRole.resourceId).toBeUndefined();
     });
@@ -185,7 +185,7 @@ describe('Roles Endpoints', () => {
       const newRoleData = {
         name: 'New Test Role',
         description: 'A newly created test role',
-        permissions: ['read_users', 'update_users'],
+        permissions: ['user:read', 'user:update'],
         // No resourceId since roles are now global
       };
 
@@ -207,7 +207,7 @@ describe('Roles Endpoints', () => {
       const globalRoleData = {
         name: 'Global Admin Role',
         description: 'A global role',
-        permissions: ['manage_users', 'manage_roles'],
+        permissions: ['user:manage', 'role:manage'],
       };
 
       const response = await request(app)

@@ -51,7 +51,7 @@ const router = Router();
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/', authGuard, rbacGuard(['read_roles']), getRoles);
+router.get('/', authGuard, rbacGuard(['role:read']), getRoles);
 
 /**
  * @swagger
@@ -88,7 +88,7 @@ router.get('/', authGuard, rbacGuard(['read_roles']), getRoles);
  *       403:
  *         description: Forbidden
  */
-router.post('/', authGuard, rbacGuard(['create_role']), validate(createRoleSchema), createRole);
+router.post('/', authGuard, rbacGuard(['role:create']), validate(createRoleSchema), createRole);
 
 /**
  * @swagger

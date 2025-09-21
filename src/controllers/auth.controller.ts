@@ -12,35 +12,106 @@ export const handleUnknownError = (error: unknown, res: Response, statusCode: nu
 };
 
 export const register = async (req: Request, res: Response) => {
+  const { email, password } = req.body;
+
+  logger.debug({
+    msg: 'Registration attempt',
+    email,
+    ip: req.ip,
+    userAgent: req.get('User-Agent'),
+    method: req.method,
+    path: req.path,
+    passwordLength: password ? password.length : 0,
+    headers: {
+      'content-length': req.get('content-length'),
+      'content-type': req.get('content-type'),
+      'user-agent': req.get('user-agent'),
+    },
+  });
+
   try {
-    const { email, password } = req.body;
     const user = await authService.register(email, password);
-    res.status(201).json(user);
-  } catch (error) {
+
     logger.debug({
-      msg: 'Registration failed',
-      email: req.body.email,
+      msg: 'Registration successful',
+      email,
+      userId: user.id,
       ip: req.ip,
       userAgent: req.get('User-Agent'),
-      reason: error instanceof Error ? error.message : 'Unknown error',
     });
+
+    res.status(201).json(user);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    logger.debug({
+      msg: 'Registration failed',
+      email,
+      ip: req.ip,
+      userAgent: req.get('User-Agent'),
+      reason: errorMessage,
+      method: req.method,
+      path: req.path,
+      passwordLength: password ? password.length : 0,
+      error: error instanceof Error ? {
+        name: error.name,
+        message: error.message,
+      } : 'Unknown error',
+    });
+
     handleUnknownError(error, res, 400);
   }
 };
 
 export const login = async (req: Request, res: Response) => {
+  const { email, password } = req.body;
+
+  logger.debug({
+    msg: 'Login attempt',
+    email,
+    ip: req.ip,
+    userAgent: req.get('User-Agent'),
+    method: req.method,
+    path: req.path,
+    passwordLength: password ? password.length : 0,
+    headers: {
+      'content-length': req.get('content-length'),
+      'content-type': req.get('content-type'),
+      'user-agent': req.get('user-agent'),
+    },
+  });
+
   try {
-    const { email, password } = req.body;
     const tokens = await authService.login(email, password);
-    res.json(tokens);
-  } catch (error) {
+
     logger.debug({
-      msg: 'Login failed',
-      email: req.body.email,
+      msg: 'Login successful',
+      email,
       ip: req.ip,
       userAgent: req.get('User-Agent'),
-      reason: error instanceof Error ? error.message : 'Unknown error',
+      accessTokenLength: tokens.accessToken ? tokens.accessToken.length : 0,
+      refreshTokenLength: tokens.refreshToken ? tokens.refreshToken.length : 0,
     });
+
+    res.json(tokens);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    logger.debug({
+      msg: 'Login failed',
+      email,
+      ip: req.ip,
+      userAgent: req.get('User-Agent'),
+      reason: errorMessage,
+      method: req.method,
+      path: req.path,
+      passwordLength: password ? password.length : 0,
+      error: error instanceof Error ? {
+        name: error.name,
+        message: error.message,
+      } : 'Unknown error',
+    });
+
     handleUnknownError(error, res, 401);
   }
 };

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authGuard } from '../middleware/auth.middleware';
 import { rbacGuard } from '../middleware/rbac.middleware';
+import { getAllPermissions } from '../config/permissions';
 
 const router = Router();
 
@@ -37,19 +38,8 @@ const router = Router();
  *         description: Internal server error
  */
 router.get('/', authGuard, (req, res) => {
-  // Return predefined permissions based on our new schema
-  const permissions = [
-    'read_users',
-    'create_user',
-    'update_users',
-    'delete_user',
-    'read_roles',
-    'create_role',
-    'read_resources',
-    'create_resource',
-    'read_permissions',
-    'manage_resource_roles'
-  ];
+  // Return all available permissions from our comprehensive permission system
+  const permissions = getAllPermissions();
   res.json(permissions);
 });
 

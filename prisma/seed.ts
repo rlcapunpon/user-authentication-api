@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
+import { ROLE_PERMISSIONS } from '../src/config/permissions';
 
 const prisma = new PrismaClient();
 
@@ -22,21 +23,7 @@ async function main() {
       data: {
         name: 'SUPERADMIN',
         description: 'Global super admin role with full system access',
-        permissions: [
-          'create_user',
-          'read_users',
-          'update_users',
-          'delete_user',
-          'read_roles',
-          'create_role',
-          'read_resources',
-          'create_resource',
-          'read_permissions',
-          'manage_resource_roles',
-          'approve_requests',
-          'manage_staff',
-          'manage_clients'
-        ],
+        permissions: ROLE_PERMISSIONS.SUPERADMIN,
       },
     });
   }
@@ -52,7 +39,7 @@ async function main() {
       data: {
         name: 'APPROVER',
         description: 'Role for approving requests and managing workflows',
-        permissions: ['approve_requests', 'read_users', 'read_permissions', 'manage_workflows'],
+        permissions: ROLE_PERMISSIONS.APPROVER,
       },
     });
   }
@@ -68,7 +55,7 @@ async function main() {
       data: {
         name: 'STAFF',
         description: 'General staff role for operational tasks',
-        permissions: ['read_users', 'read_permissions', 'create_requests', 'update_profile'],
+        permissions: ROLE_PERMISSIONS.STAFF,
       },
     });
   }
@@ -84,7 +71,7 @@ async function main() {
       data: {
         name: 'CLIENT',
         description: 'Client role for accessing services and submitting requests',
-        permissions: ['read_own_data', 'create_requests', 'update_profile'],
+        permissions: ROLE_PERMISSIONS.CLIENT,
       },
     });
   }
