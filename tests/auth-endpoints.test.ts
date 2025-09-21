@@ -405,4 +405,370 @@ describe('Authentication Endpoints', () => {
       await (prisma as any).user.delete({ where: { id: superAdminUser.id } });
     });
   });
+
+  describe('Email Verification Workflow', () => {
+    const verificationTestEmail = 'verify-test@example.com';
+    const verificationTestPassword = 'testpassword123';
+    let verificationCode: string;
+    let testUserId: string;
+
+    beforeAll(async () => {
+      // Clean up any existing test data
+      await (prisma as any).emailVerificationCode.deleteMany({});
+      await (prisma as any).userVerification.deleteMany({});
+      await (prisma as any).user.deleteMany({ where: { email: verificationTestEmail } });
+    });
+
+    afterAll(async () => {
+      // Clean up test data
+      await (prisma as any).emailVerificationCode.deleteMany({});
+      await (prisma as any).userVerification.deleteMany({});
+      await (prisma as any).user.deleteMany({ where: { email: verificationTestEmail } });
+    });
+
+    it('should register a user and create verification code', async () => {
+      const response = await request(app)
+        .post('/api/auth/register')
+        .send({
+          email: verificationTestEmail,
+          password: verificationTestPassword,
+        })
+        .expect(201);
+
+      expect(response.body).toHaveProperty('id');
+      expect(response.body.email).toBe(verificationTestEmail);
+      expect(response.body.isActive).toBe(false); // User should be inactive until verified
+
+      testUserId = response.body.id;
+
+      // Verify that verification code was created
+      const verificationRecord = await (prisma as any).emailVerificationCode.findFirst({
+        where: { userId: testUserId },
+      });
+
+      expect(verificationRecord).toBeTruthy();
+      expect(verificationRecord.isUsed).toBe(false);
+      expect(verificationRecord.expiresAt.getTime()).toBeGreaterThan(Date.now());
+
+      verificationCode = verificationRecord.verificationCode;
+
+      // Verify user verification status
+      const userVerification = await (prisma as any).userVerification.findUnique({
+        where: { userId: testUserId },
+      });
+
+      expect(userVerification).toBeTruthy();
+      expect(userVerification.isEmailVerified).toBe(false);
+      expect(userVerification.verificationStatus).toBe('unverified');
+      expect(userVerification.userStatus).toBe('pending');
+    });
+
+    it('should fail login for unverified user', async () => {
+      const response = await request(app)
+        .post('/api/auth/login')
+        .send({
+          email: verificationTestEmail,
+          password: verificationTestPassword,
+        })
+        .expect(401);
+
+      expect(response.body.message).toContain('not active');
+    });
+
+    it('should verify email successfully with valid code', async () => {
+      const response = await request(app)
+        .post(`/api/auth/verify/${verificationCode}`)
+        .expect(200);
+
+      expect(response.body).toHaveProperty('message');
+      expect(response.body.message).toBe('Email verified successfully');
+    });
+
+    it('should update user and verification status after successful verification', async () => {
+      // Check user status
+      const user = await (prisma as any).user.findUnique({
+        where: { id: testUserId },
+      });
+
+      expect(user.isActive).toBe(true);
+
+      // Check verification status
+      const userVerification = await (prisma as any).userVerification.findUnique({
+        where: { userId: testUserId },
+      });
+
+      expect(userVerification.isEmailVerified).toBe(true);
+      expect(userVerification.verificationStatus).toBe('verified');
+      expect(userVerification.userStatus).toBe('active');
+      expect(userVerification.emailVerificationDate).toBeTruthy();
+
+      // Check verification code status
+      const verificationRecord = await (prisma as any).emailVerificationCode.findUnique({
+        where: { verificationCode },
+      });
+
+      expect(verificationRecord.isUsed).toBe(true);
+    });
+
+    it('should allow login after email verification', async () => {
+      const response = await request(app)
+        .post('/api/auth/login')
+        .send({
+          email: verificationTestEmail,
+          password: verificationTestPassword,
+        })
+        .expect(200);
+
+      expect(response.body).toHaveProperty('accessToken');
+      expect(response.body).toHaveProperty('refreshToken');
+    });
+
+    it('should fail verification with invalid code', async () => {
+      const response = await request(app)
+        .post('/api/auth/verify/invalid-code-12345')
+        .expect(400);
+
+      expect(response.body.message).toBe('Invalid verification code');
+    });
+
+    it('should fail verification with expired code', async () => {
+      // Create an expired verification code
+      const expiredCode = 'expired-test-code-123';
+      const expiredTime = new Date(Date.now() - 20 * 60 * 1000); // 20 minutes ago
+
+      await (prisma as any).emailVerificationCode.create({
+        data: {
+          userId: testUserId,
+          verificationCode: expiredCode,
+          expiresAt: expiredTime,
+          isUsed: false,
+        },
+      });
+
+      const response = await request(app)
+        .post(`/api/auth/verify/${expiredCode}`)
+        .expect(400);
+
+      expect(response.body.message).toBe('Verification code has expired');
+    });
+
+    it('should fail verification with already used code', async () => {
+      // Try to use the same verification code again
+      const response = await request(app)
+        .post(`/api/auth/verify/${verificationCode}`)
+        .expect(400);
+
+      expect(response.body.message).toBe('Verification code has already been used');
+    });
+  });
+
+  describe('Email Verification Resend', () => {
+    const resendTestEmail = 'resend-test@example.com';
+    const resendTestPassword = 'testpassword123';
+    let testUserId: string;
+    let originalVerificationCode: string;
+
+    beforeAll(async () => {
+      // Clean up any existing test data
+      await (prisma as any).emailVerificationCode.deleteMany({});
+      await (prisma as any).userVerification.deleteMany({});
+      await (prisma as any).user.deleteMany({ where: { email: resendTestEmail } });
+    });
+
+    afterAll(async () => {
+      // Clean up test data
+      await (prisma as any).emailVerificationCode.deleteMany({});
+      await (prisma as any).userVerification.deleteMany({});
+      await (prisma as any).user.deleteMany({ where: { email: resendTestEmail } });
+    });
+
+    it('should register a user for resend testing', async () => {
+      const response = await request(app)
+        .post('/api/auth/register')
+        .send({
+          email: resendTestEmail,
+          password: resendTestPassword,
+        })
+        .expect(201);
+
+      testUserId = response.body.id;
+
+      // Get the original verification code
+      const verificationRecord = await (prisma as any).emailVerificationCode.findFirst({
+        where: { userId: testUserId },
+      });
+
+      expect(verificationRecord).toBeTruthy();
+      originalVerificationCode = verificationRecord.verificationCode;
+    });
+
+    it('should resend verification email with valid existing code', async () => {
+      const response = await request(app)
+        .post('/api/auth/resend-verification')
+        .send({
+          email: resendTestEmail,
+        })
+        .expect(200);
+
+      expect(response.body).toHaveProperty('message');
+      expect(response.body.message).toBe('Verification email sent successfully');
+
+      // Verify the same code is still valid and not used
+      const verificationRecord = await (prisma as any).emailVerificationCode.findFirst({
+        where: { userId: testUserId },
+      });
+
+      expect(verificationRecord.verificationCode).toBe(originalVerificationCode);
+      expect(verificationRecord.isUsed).toBe(false);
+      expect(verificationRecord.expiresAt.getTime()).toBeGreaterThan(Date.now());
+    });
+
+    it('should fail resend for already verified user', async () => {
+      // First verify the user
+      await request(app)
+        .post(`/api/auth/verify/${originalVerificationCode}`)
+        .expect(200);
+
+      // Now try to resend - should fail
+      const response = await request(app)
+        .post('/api/auth/resend-verification')
+        .send({
+          email: resendTestEmail,
+        })
+        .expect(400);
+
+      expect(response.body.message).toBe('Email is already verified');
+    });
+
+    it('should resend verification email with new code when original is expired', async () => {
+      // Create a new user for this test
+      const expiredTestEmail = 'expired-resend@example.com';
+      const expiredTestPassword = 'testpassword123';
+
+      await request(app)
+        .post('/api/auth/register')
+        .send({
+          email: expiredTestEmail,
+          password: expiredTestPassword,
+        })
+        .expect(201);
+
+      const user = await (prisma as any).user.findFirst({
+        where: { email: expiredTestEmail },
+      });
+
+      // Expire the verification code
+      const expiredTime = new Date(Date.now() - 20 * 60 * 1000); // 20 minutes ago
+      await (prisma as any).emailVerificationCode.updateMany({
+        where: { userId: user.id },
+        data: { expiresAt: expiredTime },
+      });
+
+      // Try to resend - should create new code
+      const response = await request(app)
+        .post('/api/auth/resend-verification')
+        .send({
+          email: expiredTestEmail,
+        })
+        .expect(200);
+
+      expect(response.body.message).toBe('Verification email sent successfully');
+
+      // Verify a new code was created
+      const verificationRecords = await (prisma as any).emailVerificationCode.findMany({
+        where: { userId: user.id },
+      });
+
+      expect(verificationRecords.length).toBe(2); // Original expired + new one
+      const newRecord = verificationRecords.find((r: any) => r.expiresAt.getTime() > Date.now());
+      expect(newRecord).toBeTruthy();
+      expect(newRecord.isUsed).toBe(false);
+
+      // Cleanup
+      await (prisma as any).user.delete({ where: { id: user.id } });
+    });
+
+    it('should fail resend for non-existent email', async () => {
+      const response = await request(app)
+        .post('/api/auth/resend-verification')
+        .send({
+          email: 'nonexistent@example.com',
+        })
+        .expect(400);
+
+      expect(response.body.message).toBe('User not found');
+    });
+
+    it('should fail resend with missing email', async () => {
+      const response = await request(app)
+        .post('/api/auth/resend-verification')
+        .send({})
+        .expect(400);
+
+      expect(response.body).toHaveProperty('message');
+    });
+
+    it('should fail resend with invalid email format', async () => {
+      const response = await request(app)
+        .post('/api/auth/resend-verification')
+        .send({
+          email: 'invalid-email-format',
+        })
+        .expect(400);
+
+      expect(response.body).toHaveProperty('message');
+    });
+
+    it('should resend verification email when no verification code exists', async () => {
+      // Create a new user for this test
+      const noCodeTestEmail = 'no-code-resend@example.com';
+      const noCodeTestPassword = 'testpassword123';
+
+      await request(app)
+        .post('/api/auth/register')
+        .send({
+          email: noCodeTestEmail,
+          password: noCodeTestPassword,
+        })
+        .expect(201);
+
+      const user = await (prisma as any).user.findFirst({
+        where: { email: noCodeTestEmail },
+      });
+
+      // Delete all verification codes for this user (simulate no codes exist)
+      await (prisma as any).emailVerificationCode.deleteMany({
+        where: { userId: user.id },
+      });
+
+      // Verify no codes exist
+      const codesBefore = await (prisma as any).emailVerificationCode.findMany({
+        where: { userId: user.id },
+      });
+      expect(codesBefore.length).toBe(0);
+
+      // Try to resend - should create new code
+      const response = await request(app)
+        .post('/api/auth/resend-verification')
+        .send({
+          email: noCodeTestEmail,
+        })
+        .expect(200);
+
+      expect(response.body.message).toBe('Verification email sent successfully');
+
+      // Verify a new code was created
+      const codesAfter = await (prisma as any).emailVerificationCode.findMany({
+        where: { userId: user.id },
+      });
+
+      expect(codesAfter.length).toBe(1);
+      const newCode = codesAfter[0];
+      expect(newCode.isUsed).toBe(false);
+      expect(newCode.expiresAt.getTime()).toBeGreaterThan(Date.now());
+
+      // Cleanup
+      await (prisma as any).user.delete({ where: { id: user.id } });
+    });
+  });
 });

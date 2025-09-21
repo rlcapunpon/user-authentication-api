@@ -4,6 +4,9 @@ import { generateAuthTokens, findRefreshTokenById, revokeRefreshToken } from './
 import { verifyToken } from '../utils/jwt';
 import { prisma } from '../db';
 import { UserWithRoles } from '../types/user';
+import { findVerificationCode, invalidateVerificationCode } from './emailVerification.service';
+import { generateVerificationCode } from './emailVerification.service';
+import { sendVerificationEmail } from './email.service';
 
 export const register = async (email: string, password: string) => {
   try {
@@ -24,6 +27,32 @@ export const register = async (email: string, password: string) => {
     }
 
     const user = await createUser(email, password);
+
+    // Generate verification code and send email
+    try {
+      const verificationCode = await generateVerificationCode(user.id);
+      await sendVerificationEmail({
+        to: email,
+        verificationCode,
+        verificationUrl: process.env.VERIFICATION_URL!,
+      });
+
+      console.log('Verification email sent successfully:', {
+        email,
+        userId: user.id,
+        verificationCode: verificationCode.substring(0, 8) + '...', // Log partial code for security
+        timestamp: new Date().toISOString(),
+      });
+    } catch (emailError) {
+      console.error('Failed to send verification email:', {
+        email,
+        userId: user.id,
+        error: emailError instanceof Error ? emailError.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+      });
+      // Note: We don't fail registration if email sending fails
+      // The user can still verify later or request a new verification email
+    }
 
     console.log('Registration successful:', {
       email,
@@ -259,5 +288,183 @@ export const validate = (token: string) => {
     return { valid: true, decoded };
   } catch (error) {
     return { valid: false, error };
+  }
+};
+
+export const verifyEmail = async (verificationCode: string) => {
+  try {
+    console.log('Email verification attempt:', {
+      verificationCode: verificationCode.substring(0, 8) + '...', // Log partial code for security
+      timestamp: new Date().toISOString(),
+    });
+
+    // Find the verification code
+    const verificationRecord = await findVerificationCode(verificationCode);
+    if (!verificationRecord) {
+      console.warn('Email verification failed - code not found:', {
+        verificationCode: verificationCode.substring(0, 8) + '...',
+        timestamp: new Date().toISOString(),
+      });
+      throw new Error('Invalid verification code');
+    }
+
+    // Check if code is expired
+    const now = new Date();
+    if (verificationRecord.expiresAt < now) {
+      console.warn('Email verification failed - code expired:', {
+        verificationCode: verificationCode.substring(0, 8) + '...',
+        expiresAt: verificationRecord.expiresAt,
+        currentTime: now,
+        timestamp: new Date().toISOString(),
+      });
+      throw new Error('Verification code has expired');
+    }
+
+    // Check if code is already used
+    if (verificationRecord.isUsed) {
+      console.warn('Email verification failed - code already used:', {
+        verificationCode: verificationCode.substring(0, 8) + '...',
+        timestamp: new Date().toISOString(),
+      });
+      throw new Error('Verification code has already been used');
+    }
+
+    // Update UserVerification status
+    await prisma.userVerification.update({
+      where: { userId: verificationRecord.userId },
+      data: {
+        isEmailVerified: true,
+        emailVerificationDate: now,
+        verificationStatus: 'verified',
+        userStatus: 'active',
+        updatedAt: now,
+      },
+    });
+
+    // Update User status to active
+    await prisma.user.update({
+      where: { id: verificationRecord.userId },
+      data: {
+        isActive: true,
+        updatedAt: now,
+      },
+    });
+
+    // Mark verification code as used
+    await invalidateVerificationCode(verificationCode);
+
+    console.log('Email verification successful:', {
+      userId: verificationRecord.userId,
+      verificationCode: verificationCode.substring(0, 8) + '...',
+      timestamp: new Date().toISOString(),
+    });
+
+    return { message: 'Email verified successfully' };
+  } catch (error) {
+    console.error('Email verification error:', {
+      verificationCode: verificationCode.substring(0, 8) + '...',
+      error: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString(),
+    });
+    throw error;
+  }
+};
+
+export const resendVerification = async (email: string) => {
+  try {
+    console.log('Resend verification attempt:', {
+      email,
+      timestamp: new Date().toISOString(),
+    });
+
+    // Find the user
+    const user = await findUserByEmail(email);
+    if (!user) {
+      console.warn('Resend verification failed - user not found:', {
+        email,
+        timestamp: new Date().toISOString(),
+      });
+      throw new Error('User not found');
+    }
+
+    // Check UserVerification status
+    const userVerification = await (prisma as any).userVerification.findUnique({
+      where: { userId: user.id },
+    });
+
+    if (!userVerification) {
+      console.warn('Resend verification failed - no verification record:', {
+        email,
+        userId: user.id,
+        timestamp: new Date().toISOString(),
+      });
+      throw new Error('User verification record not found');
+    }
+
+    // If user is already verified, return error
+    if (userVerification.isEmailVerified) {
+      console.warn('Resend verification failed - user already verified:', {
+        email,
+        userId: user.id,
+        timestamp: new Date().toISOString(),
+      });
+      throw new Error('Email is already verified');
+    }
+
+    // Find existing verification codes for this user
+    const existingCodes = await (prisma as any).emailVerificationCode.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    let verificationCodeToUse: string;
+
+    // Check if there's a valid (not expired, not used) code we can reuse
+    const validCode = existingCodes.find((code: any) =>
+      !code.isUsed && code.expiresAt > new Date()
+    );
+
+    if (validCode) {
+      // Reuse the valid code
+      verificationCodeToUse = validCode.verificationCode;
+      console.log('Reusing valid verification code:', {
+        email,
+        userId: user.id,
+        verificationCode: verificationCodeToUse.substring(0, 8) + '...',
+        timestamp: new Date().toISOString(),
+      });
+    } else {
+      // Generate a new verification code
+      verificationCodeToUse = await generateVerificationCode(user.id);
+      console.log('Generated new verification code:', {
+        email,
+        userId: user.id,
+        verificationCode: verificationCodeToUse.substring(0, 8) + '...',
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    // Send the verification email
+    await sendVerificationEmail({
+      to: email,
+      verificationCode: verificationCodeToUse,
+      verificationUrl: process.env.VERIFICATION_URL!,
+    });
+
+    console.log('Verification email resent successfully:', {
+      email,
+      userId: user.id,
+      verificationCode: verificationCodeToUse.substring(0, 8) + '...',
+      timestamp: new Date().toISOString(),
+    });
+
+    return { message: 'Verification email sent successfully' };
+  } catch (error) {
+    console.error('Resend verification error:', {
+      email,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString(),
+    });
+    throw error;
   }
 };

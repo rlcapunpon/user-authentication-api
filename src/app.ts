@@ -1,11 +1,15 @@
 import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import swaggerUi from 'swagger-ui-express';
+import dotenv from 'dotenv';
 
 import { authRoutes, rolesRoutes, permissionsRoutes, oidcRoutes, usersRoutes, configRoutes, resourcesRoutes, userDetailsRoutes } from './routes';
 import { authGuard } from './middleware/auth.middleware';
 import { swaggerSpec } from './config/swagger';
 import { logger } from './utils/logger';
+
+// Load environment variables
+dotenv.config();
 
 const app: Express = express();
 

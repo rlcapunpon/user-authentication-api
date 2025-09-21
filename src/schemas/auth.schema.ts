@@ -19,3 +19,9 @@ export const refreshTokenSchema = z.object({
     refreshToken: z.string(),
   }),
 });
+
+export const resendVerificationSchema = z.object({
+  body: z.object({
+    email: z.string().email(),
+  }),
+});

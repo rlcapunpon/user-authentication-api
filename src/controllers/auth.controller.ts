@@ -237,3 +237,101 @@ export const deactivateMyAccount = async (req: Request, res: Response) => {
     handleUnknownError(error, res, 500);
   }
 };
+
+export const verifyEmail = async (req: Request, res: Response) => {
+  const { verificationCode } = req.params;
+
+  logger.debug({
+    msg: 'Email verification attempt',
+    verificationCode: verificationCode.substring(0, 8) + '...', // Log partial code for security
+    ip: req.ip,
+    userAgent: req.get('User-Agent'),
+    method: req.method,
+    path: req.path,
+    headers: {
+      'content-length': req.get('content-length'),
+      'content-type': req.get('content-type'),
+      'user-agent': req.get('user-agent'),
+    },
+  });
+
+  try {
+    const result = await authService.verifyEmail(verificationCode);
+
+    logger.debug({
+      msg: 'Email verification successful',
+      verificationCode: verificationCode.substring(0, 8) + '...',
+      ip: req.ip,
+      userAgent: req.get('User-Agent'),
+    });
+
+    res.status(200).json(result);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    logger.debug({
+      msg: 'Email verification failed',
+      verificationCode: verificationCode.substring(0, 8) + '...',
+      ip: req.ip,
+      userAgent: req.get('User-Agent'),
+      reason: errorMessage,
+      method: req.method,
+      path: req.path,
+      error: error instanceof Error ? {
+        name: error.name,
+        message: error.message,
+      } : 'Unknown error',
+    });
+
+    handleUnknownError(error, res, 400);
+  }
+};
+
+export const resendVerification = async (req: Request, res: Response) => {
+  const { email } = req.body;
+
+  logger.debug({
+    msg: 'Resend verification attempt',
+    email,
+    ip: req.ip,
+    userAgent: req.get('User-Agent'),
+    method: req.method,
+    path: req.path,
+    headers: {
+      'content-length': req.get('content-length'),
+      'content-type': req.get('content-type'),
+      'user-agent': req.get('user-agent'),
+    },
+  });
+
+  try {
+    const result = await authService.resendVerification(email);
+
+    logger.debug({
+      msg: 'Resend verification successful',
+      email,
+      ip: req.ip,
+      userAgent: req.get('User-Agent'),
+    });
+
+    res.status(200).json(result);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    logger.debug({
+      msg: 'Resend verification failed',
+      email,
+      ip: req.ip,
+      userAgent: req.get('User-Agent'),
+      reason: errorMessage,
+      method: req.method,
+      path: req.path,
+      error: error instanceof Error ? {
+        name: error.name,
+        message: error.message,
+      } : 'Unknown error',
+    });
+
+    handleUnknownError(error, res, 400);
+  }
+};

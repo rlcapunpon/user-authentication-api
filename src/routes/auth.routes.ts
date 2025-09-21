@@ -334,10 +334,94 @@
  *                   type: string
  */
 
+/**
+ * @swagger
+ * /auth/verify/{verificationCode}:
+ *   post:
+ *     summary: Verify user email using verification code
+ *     tags: [Auth]
+ *     parameters:
+ *       - in: path
+ *         name: verificationCode
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The email verification code sent to the user
+ *     responses:
+ *       200:
+ *         description: Email verified successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Email verified successfully"
+ *       400:
+ *         description: Bad request, e.g., invalid, expired, or already used verification code
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   examples:
+ *                     invalid: "Invalid verification code"
+ *                     expired: "Verification code has expired"
+ *                     used: "Verification code has already been used"
+ */
+
+/**
+ * @swagger
+ * /auth/resend-verification:
+ *   post:
+ *     summary: Resend email verification code
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: The email address to resend verification for
+ *     responses:
+ *       200:
+ *         description: Verification email sent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Verification email sent successfully"
+ *       400:
+ *         description: Bad request, e.g., user not found, already verified, or invalid email
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   examples:
+ *                     notFound: "User not found"
+ *                     verified: "Email is already verified"
+ *                     invalidEmail: "Invalid email format"
+ */
+
 import { Router } from 'express';
-import { register, login, refresh, logout, getMe, validate as validateToken, updateMe, deactivateMyAccount } from '../controllers';
+import { register, login, refresh, logout, getMe, validate as validateToken, updateMe, deactivateMyAccount, verifyEmail, resendVerification } from '../controllers';
 import { validate } from '../middleware/validate';
-import { registerSchema, loginSchema, refreshTokenSchema } from '../schemas/auth.schema';
+import { registerSchema, loginSchema, refreshTokenSchema, resendVerificationSchema } from '../schemas/auth.schema';
 import { updateMyProfileSchema } from '../schemas/user.schema';
 import { authGuard } from '../middleware/auth.middleware';
 
@@ -351,5 +435,7 @@ router.get('/me', authGuard, getMe);
 router.put('/me', authGuard, validate(updateMyProfileSchema), updateMe);
 router.delete('/me', authGuard, deactivateMyAccount);
 router.post('/validate', authGuard, validateToken);
+router.post('/verify/:verificationCode', verifyEmail);
+router.post('/resend-verification', validate(resendVerificationSchema), resendVerification);
 
 export default router;

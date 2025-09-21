@@ -20,6 +20,7 @@ model User {
   details       UserDetails?
   subordinates  UserDetails[]      @relation("ManagerSubordinates")
   verification  UserVerification?
+  emailCodes    EmailVerificationCode[]
 }
 
 model UserDetails {
@@ -98,4 +99,14 @@ model UserVerification {
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
   user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model EmailVerificationCode {
+  id               String    @id @default(uuid())
+  userId           String
+  verificationCode String    @unique
+  expiresAt        DateTime
+  isUsed           Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
