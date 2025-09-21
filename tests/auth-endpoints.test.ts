@@ -7,7 +7,7 @@ describe('Authentication Endpoints', () => {
   let testUserId: string;
   let testUserToken: string;
   let testRefreshToken: string;
-  const testEmail = 'testuser@example.com';
+  const testEmail = 'testuser-auth@example.com';
   const testPassword = 'testpassword123';
 
   beforeAll(async () => {
@@ -23,6 +23,7 @@ describe('Authentication Endpoints', () => {
     const testUser = await (prisma as any).user.create({
       data: {
         email: testEmail,
+        isActive: true,
         isSuperAdmin: false,
         credential: {
           create: {
@@ -365,13 +366,14 @@ describe('Authentication Endpoints', () => {
 
     it('should handle super admin user correctly', async () => {
       // Create super admin user
-      const superAdminEmail = 'superadmin-test@example.com';
+      const superAdminEmail = 'superadmin-auth@example.com';
       const superAdminPassword = 'superadminpass123';
       const hashedPassword = await hashPassword(superAdminPassword);
       
       const superAdminUser = await (prisma as any).user.create({
         data: {
           email: superAdminEmail,
+          isActive: true,
           isSuperAdmin: true,
           credential: {
             create: {

@@ -30,10 +30,20 @@ export const createUser = async (
           reportToId: reportTo,
         },
       },
+      verification: {
+        create: {
+          isEmailVerified: false,
+          isContactVerified: false,
+          isReporterAssigned: false,
+          verificationStatus: 'unverified',
+          userStatus: 'pending',
+        },
+      },
     },
     include: {
       resourceRoles: true,
       details: true,
+      verification: true,
     },
   });
 };

@@ -12,9 +12,9 @@ describe('Roles Endpoints', () => {
   let testResourceId: string;
   let testRoleId: string;
 
-  const testEmail = 'testuser@example.com';
+  const testEmail = 'testuser-roles@example.com';
   const testPassword = 'testpassword123';
-  const adminEmail = 'admin@example.com';
+  const adminEmail = 'admin-roles@example.com';
   const adminPassword = 'adminpassword123';
 
   beforeAll(async () => {
@@ -39,6 +39,7 @@ describe('Roles Endpoints', () => {
     const testUser = await (prisma as any).user.create({
       data: {
         email: testEmail,
+        isActive: true,
         isSuperAdmin: false,
         credential: {
           create: {
@@ -54,6 +55,7 @@ describe('Roles Endpoints', () => {
     const adminUser = await (prisma as any).user.create({
       data: {
         email: adminEmail,
+        isActive: true,
         isSuperAdmin: true,
         credential: {
           create: {

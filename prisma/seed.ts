@@ -82,6 +82,7 @@ async function main() {
     update: {},
     create: {
       email: 'superadmin@example.com',
+      isActive: true,
       isSuperAdmin: true,
       credential: {
         create: {
@@ -96,6 +97,7 @@ async function main() {
     update: {},
     create: {
       email: 'approver@example.com',
+      isActive: true,
       isSuperAdmin: false,
       credential: {
         create: {
@@ -110,6 +112,7 @@ async function main() {
     update: {},
     create: {
       email: 'staff@example.com',
+      isActive: true,
       isSuperAdmin: false,
       credential: {
         create: {
@@ -124,6 +127,7 @@ async function main() {
     update: {},
     create: {
       email: 'client@example.com',
+      isActive: true,
       isSuperAdmin: false,
       credential: {
         create: {

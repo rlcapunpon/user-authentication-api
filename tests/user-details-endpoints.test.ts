@@ -14,13 +14,13 @@ describe('User Details Endpoints', () => {
   let subordinateUserId: string;
   let subordinateUserToken: string;
 
-  const testEmail = 'testuser@example.com';
+  const testEmail = 'testuser-details@example.com';
   const testPassword = 'testpassword123';
-  const adminEmail = 'admin@example.com';
+  const adminEmail = 'admin-details@example.com';
   const adminPassword = 'adminpassword123';
-  const managerEmail = 'manager@example.com';
+  const managerEmail = 'manager-details@example.com';
   const managerPassword = 'managerpassword123';
-  const subordinateEmail = 'subordinate@example.com';
+  const subordinateEmail = 'subordinate-details@example.com';
   const subordinatePassword = 'subordinatepassword123';
 
   beforeAll(async () => {
@@ -37,6 +37,7 @@ describe('User Details Endpoints', () => {
     const testUser = await (prisma as any).user.create({
       data: {
         email: testEmail,
+        isActive: true,
         isSuperAdmin: false,
         credential: {
           create: {
@@ -63,6 +64,7 @@ describe('User Details Endpoints', () => {
     const adminUser = await (prisma as any).user.create({
       data: {
         email: adminEmail,
+        isActive: true,
         isSuperAdmin: true,
         credential: {
           create: {
@@ -89,6 +91,7 @@ describe('User Details Endpoints', () => {
     const managerUser = await (prisma as any).user.create({
       data: {
         email: managerEmail,
+        isActive: true,
         isSuperAdmin: false,
         credential: {
           create: {
@@ -115,6 +118,7 @@ describe('User Details Endpoints', () => {
     const subordinateUser = await (prisma as any).user.create({
       data: {
         email: subordinateEmail,
+        isActive: true,
         isSuperAdmin: false,
         credential: {
           create: {
@@ -551,13 +555,14 @@ describe('User Details Endpoints', () => {
   describe('Integration Tests', () => {
     it('should complete full user details management flow', async () => {
       // Create a new user for testing
-      const newUserEmail = 'integration-test@example.com';
+      const newUserEmail = 'integration-test-details@example.com';
       const newUserPassword = 'integrationpass123';
       const hashedPassword = await hashPassword(newUserPassword);
 
       const newUser = await (prisma as any).user.create({
         data: {
           email: newUserEmail,
+          isActive: true,
           isSuperAdmin: false,
           credential: {
             create: {

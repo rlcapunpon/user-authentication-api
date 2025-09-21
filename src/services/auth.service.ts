@@ -69,13 +69,36 @@ export const login = async (email: string, password: string) => {
     }
 
     if (!user.isActive) {
+      // Check UserVerification table for detailed status
+      const userVerification = await (prisma as any).userVerification.findUnique({
+        where: { userId: user.id },
+        select: {
+          verificationStatus: true,
+          userStatus: true,
+        },
+      });
+
+      let errorMessage = 'Account is deactivated';
+
+      if (userVerification) {
+        if (userVerification.verificationStatus === 'unverified') {
+          errorMessage = 'User account is not active and unverified';
+        } else if (userVerification.verificationStatus === 'verified') {
+          errorMessage = `User account is ${userVerification.userStatus}`;
+        } else if (userVerification.verificationStatus === 'failed') {
+          errorMessage = 'User account verification failed';
+        }
+      }
+
       console.warn('Login failed - user inactive:', {
         email,
         userId: user.id,
         timestamp: new Date().toISOString(),
-        reason: 'User account is deactivated',
+        reason: errorMessage,
+        verificationStatus: userVerification?.verificationStatus,
+        userStatus: userVerification?.userStatus,
       });
-      throw new Error('Account is deactivated');
+      throw new Error(errorMessage);
     }
 
     const isPasswordValid = await comparePassword(password, user.credential.passwordHash);

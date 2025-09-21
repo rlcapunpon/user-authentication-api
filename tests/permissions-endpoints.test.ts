@@ -10,9 +10,9 @@ describe('Permissions Endpoints', () => {
   let adminUserId: string;
   let adminUserToken: string;
 
-  const testEmail = 'testuser@example.com';
+  const testEmail = 'testuser-permissions@example.com';
   const testPassword = 'testpassword123';
-  const adminEmail = 'admin@example.com';
+  const adminEmail = 'admin-permissions@example.com';
   const adminPassword = 'adminpassword123';
 
   beforeAll(async () => {
@@ -28,6 +28,7 @@ describe('Permissions Endpoints', () => {
     const testUser = await (prisma as any).user.create({
       data: {
         email: testEmail,
+        isActive: true,
         isSuperAdmin: false,
         credential: {
           create: {
@@ -44,6 +45,7 @@ describe('Permissions Endpoints', () => {
     const adminUser = await (prisma as any).user.create({
       data: {
         email: adminEmail,
+        isActive: true,
         isSuperAdmin: true,
         credential: {
           create: {
