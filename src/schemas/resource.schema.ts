@@ -57,3 +57,11 @@ export const roleIdSchema = z.object({
     roleId: z.string(), // Allow any string format (CUID from Prisma)
   }),
 });
+
+export const checkUserPermissionSchema = z.object({
+  body: z.object({
+    userId: z.string().min(1, 'userId is required'),
+    permission: z.string().min(1, 'permission is required'),
+    resourceId: z.string().min(1, 'resourceId is required'),
+  }),
+});

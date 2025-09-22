@@ -100,3 +100,48 @@ export const getAvailableRoles = () => {
     },
   });
 };
+
+/**
+ * Find a user by ID with their roles and permissions
+ */
+export const findUserById = (userId: string) => {
+  return prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      resourceRoles: {
+        include: {
+          role: true,
+          resource: true,
+        },
+      },
+    },
+  });
+};
+
+/**
+ * Get user permissions from their roles for a specific resource
+ */
+export const getUserPermissionsFromRoles = async (userId: string, resourceId: string): Promise<string[]> => {
+  const userRoles = await prisma.userResourceRole.findMany({
+    where: {
+      userId,
+      OR: [
+        { resourceId }, // Resource-specific roles
+        { resourceId: null }, // Global roles
+      ],
+    },
+    include: {
+      role: true,
+    },
+  });
+
+  // Collect all permissions from user's roles
+  const permissions = new Set<string>();
+  userRoles.forEach(userRole => {
+    if (userRole.role.permissions) {
+      userRole.role.permissions.forEach(permission => permissions.add(permission));
+    }
+  });
+
+  return Array.from(permissions);
+};

@@ -81,3 +81,48 @@ export const getAvailableRoles = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Failed to fetch available roles' });
   }
 };
+
+/**
+ * Handles the request to check if a user has a specific permission on a resource.
+ * @param req - The Express request object.
+ * @param res - The Express response object.
+ */
+export const checkUserPermission = async (req: Request, res: Response) => {
+  try {
+    const { userId, permission, resourceId } = req.body;
+
+    // Get user with their roles and permissions
+    const user = await rbacService.findUserById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check if user is super admin
+    if (user.isSuperAdmin) {
+      return res.json({
+        hasPermission: true,
+        reason: 'super_admin',
+        checkedPermission: permission,
+        resourceId,
+        userPermissions: ['*'] // Super admin has all permissions
+      });
+    }
+
+    // Get user's permissions from their roles for the specific resource
+    const userPermissions = await rbacService.getUserPermissionsFromRoles(userId, resourceId);
+
+    // Check the specific permission
+    const hasPermission = userPermissions.includes(permission) || userPermissions.includes('*');
+
+    res.json({
+      hasPermission,
+      userPermissions,
+      checkedPermission: permission,
+      resourceId
+    });
+
+  } catch (error) {
+    console.error('Error checking user permission:', error);
+    res.status(500).json({ message: 'Failed to check user permission' });
+  }
+};
