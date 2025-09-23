@@ -145,22 +145,26 @@ describe('User Details Endpoints', () => {
     testUserToken = generateAccessToken({ 
       userId: testUserId, 
       isSuperAdmin: false,
-      permissions: [] // Regular user has no permissions
+      permissions: [], // Regular user has no permissions
+      role: 'User'
     });
     adminUserToken = generateAccessToken({ 
       userId: adminUserId, 
       isSuperAdmin: true,
-      permissions: ['*'] // Admin has all permissions
+      permissions: ['*'], // Admin has all permissions
+      role: 'Super Admin'
     });
     managerUserToken = generateAccessToken({ 
       userId: managerUserId, 
       isSuperAdmin: false,
-      permissions: [] // Manager has no permissions
+      permissions: [], // Manager has no permissions
+      role: 'User'
     });
     subordinateUserToken = generateAccessToken({ 
       userId: subordinateUserId, 
       isSuperAdmin: false,
-      permissions: [] // Subordinate has no permissions
+      permissions: [], // Subordinate has no permissions
+      role: 'User'
     });
   });
 
@@ -586,7 +590,8 @@ describe('User Details Endpoints', () => {
       const newUserToken = generateAccessToken({ 
         userId: newUser.id, 
         isSuperAdmin: false,
-        permissions: [] // New user has no permissions
+        permissions: [], // New user has no permissions
+        role: 'User'
       });
 
       // 1. Get user details

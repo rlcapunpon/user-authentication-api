@@ -69,12 +69,14 @@ describe('Roles Endpoints', () => {
     testUserToken = generateAccessToken({ 
       userId: testUserId, 
       isSuperAdmin: false,
-      permissions: ['role:read'] // Test user has read permission
+      permissions: ['role:read'], // Test user has read permission
+      role: 'Read Roles Role'
     });
     adminUserToken = generateAccessToken({ 
       userId: adminUserId, 
       isSuperAdmin: true,
-      permissions: ['*'] // Admin has all permissions
+      permissions: ['*'], // Admin has all permissions
+      role: 'Super Admin'
     });
 
     // Create test role with read_roles permission

@@ -16,10 +16,18 @@ export const generateAuthTokens = async (user: UserWithRoles) => {
     ? ['*'] // SuperAdmin has all permissions
     : [...new Set(user.resourceRoles.flatMap(role => role.role.permissions))]; // Unique permissions only
 
+  // Extract primary role (prefer global roles, otherwise first role)
+  const primaryRole = user.isSuperAdmin 
+    ? 'Super Admin'
+    : user.resourceRoles.find(role => role.resourceId === null)?.role.name || // Global role first
+      user.resourceRoles[0]?.role.name || // First role if no global
+      'User'; // Default fallback
+
   const accessToken = generateAccessToken({ 
     userId: user.id, 
     isSuperAdmin: user.isSuperAdmin,
-    permissions: userPermissions // Much smaller than full resourceRoles objects
+    permissions: userPermissions,
+    role: primaryRole // Add primary role to JWT payload
   });
   const jwtRefreshToken = generateJwtRefreshToken({ userId: user.id, jti: refreshToken.id });
 

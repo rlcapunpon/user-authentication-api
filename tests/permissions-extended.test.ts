@@ -43,7 +43,8 @@ describe('Extended Permissions Tests', () => {
     testUserToken = generateAccessToken({ 
       userId: testUserId, 
       isSuperAdmin: false,
-      permissions: ['user:read'] 
+      permissions: ['user:read'],
+      role: 'User'
     });
 
     // Create admin test user
@@ -64,7 +65,8 @@ describe('Extended Permissions Tests', () => {
     adminUserToken = generateAccessToken({ 
       userId: adminUserId, 
       isSuperAdmin: true,
-      permissions: ['*'] 
+      permissions: ['*'],
+      role: 'Super Admin'
     });
 
     // Create test resources

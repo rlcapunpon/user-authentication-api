@@ -65,6 +65,24 @@ describe('Authentication Endpoints', () => {
       testRefreshToken = response.body.refreshToken;
     });
 
+    it('should include role field in JWT payload', async () => {
+      const jwt = require('jsonwebtoken');
+      const decoded = jwt.decode(testUserToken);
+      
+      expect(decoded).toHaveProperty('role');
+      expect(typeof decoded.role).toBe('string');
+      // For a user with no roles, should default to 'User'
+      expect(decoded.role).toBe('User');
+      
+      // Verify other JWT payload fields are present
+      expect(decoded).toHaveProperty('userId');
+      expect(decoded).toHaveProperty('isSuperAdmin');
+      expect(decoded).toHaveProperty('permissions');
+      expect(decoded.userId).toBe(testUserId);
+      expect(decoded.isSuperAdmin).toBe(false);
+      expect(Array.isArray(decoded.permissions)).toBe(true);
+    });
+
     it('should fail with invalid email', async () => {
       const response = await request(app)
         .post('/api/auth/login')
@@ -400,6 +418,14 @@ describe('Authentication Endpoints', () => {
 
       expect(profileResponse.body.isSuperAdmin).toBe(true);
       expect(profileResponse.body.email).toBe(superAdminEmail);
+
+      // Verify JWT contains Super Admin role
+      const jwt = require('jsonwebtoken');
+      const decoded = jwt.decode(loginResponse.body.accessToken);
+      expect(decoded).toHaveProperty('role');
+      expect(decoded.role).toBe('Super Admin');
+      expect(decoded.isSuperAdmin).toBe(true);
+      expect(decoded.permissions).toEqual(['*']); // Super admin has all permissions
 
       // Cleanup
       await (prisma as any).user.delete({ where: { id: superAdminUser.id } });
