@@ -78,9 +78,11 @@ describe('Authentication Endpoints', () => {
       expect(decoded).toHaveProperty('userId');
       expect(decoded).toHaveProperty('isSuperAdmin');
       expect(decoded).toHaveProperty('permissions');
+      expect(decoded).toHaveProperty('username');
       expect(decoded.userId).toBe(testUserId);
       expect(decoded.isSuperAdmin).toBe(false);
       expect(Array.isArray(decoded.permissions)).toBe(true);
+      expect(decoded.username).toBe(testEmail);
     });
 
     it('should fail with invalid email', async () => {
@@ -426,6 +428,8 @@ describe('Authentication Endpoints', () => {
       expect(decoded.role).toBe('Super Admin');
       expect(decoded.isSuperAdmin).toBe(true);
       expect(decoded.permissions).toEqual(['*']); // Super admin has all permissions
+      expect(decoded).toHaveProperty('username');
+      expect(decoded.username).toBe(superAdminEmail);
 
       // Cleanup
       await (prisma as any).user.delete({ where: { id: superAdminUser.id } });

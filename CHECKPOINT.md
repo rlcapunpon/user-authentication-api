@@ -148,3 +148,14 @@
 - Build succeeds
 
 **Status**: Email verification system fully implemented with comprehensive edge case handling, tested, and production-ready. All 7 steps completed successfully following TDD principles.
+
+## Step 6 - Add `username` as part of the JWT payload
+- Updated `src/services/token.service.ts` to include `username: user.email` in JWT payload generation
+- Updated `tests/jwt-role.test.ts` to verify username field presence and correct email value in all test cases
+- Updated `tests/auth-endpoints.test.ts` to verify username field in JWT payload validation for both regular users and super admin scenarios
+- Fixed test expectations to correctly aggregate permissions from all user roles (not just primary role)
+- All tests pass (120/120 total tests)
+- Build succeeds
+- JWT payload now includes username field using user email as value
+
+**Status**: Step 6 completed successfully. JWT payload enhanced with username field following TDD principles.

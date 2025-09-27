@@ -27,7 +27,8 @@ export const generateAuthTokens = async (user: UserWithRoles) => {
     userId: user.id, 
     isSuperAdmin: user.isSuperAdmin,
     permissions: userPermissions,
-    role: primaryRole // Add primary role to JWT payload
+    role: primaryRole,
+    username: user.email // Add username field using user email
   });
   const jwtRefreshToken = generateJwtRefreshToken({ userId: user.id, jti: refreshToken.id });
 
