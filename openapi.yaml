@@ -50,6 +50,10 @@ tags:
     description: OpenID Connect configuration
   - name: Health
     description: Health check endpoints
+  - name: UserDetails
+    description: User details management
+  - name: Permissions
+    description: Permission management
 
 paths:
   # Health Check
@@ -345,10 +349,10 @@ paths:
         '404':
           description: User not found
 
-  /users/{id}/roles:
+  /users/{id}/super-admin:
     put:
       tags: [Users]
-      summary: Update a user's global roles
+      summary: Update a user's super admin status
       security:
         - bearerAuth: []
       parameters:
@@ -364,10 +368,10 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateUserRoles'
+              $ref: '#/components/schemas/UpdateUserSuperAdminRequest'
       responses:
         '200':
-          description: User roles updated successfully
+          description: User super admin status updated successfully
           content:
             application/json:
               schema:
@@ -408,6 +412,54 @@ paths:
           description: Forbidden - insufficient permissions
         '404':
           description: User not found
+
+  /users/assign-role:
+    post:
+      tags: [Users]
+      summary: Assign a resource role to a user
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignUserResourceRole'
+      responses:
+        '201':
+          description: Role assigned successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResourceRole'
+        '400':
+          description: Bad request - validation error
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - insufficient permissions
+
+  /users/revoke-role:
+    post:
+      tags: [Users]
+      summary: Revoke a resource role from a user
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RevokeUserResourceRole'
+      responses:
+        '204':
+          description: Role revoked successfully
+        '400':
+          description: Bad request - validation error
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - insufficient permissions
 
   # Global RBAC Endpoints
   /roles:
@@ -474,25 +526,56 @@ paths:
           description: Forbidden - insufficient permissions
 
   # Resource-Based RBAC Endpoints
-  /resources/{resourceType}/{resourceId}/roles:
-    post:
+  /resources:
+    get:
       tags: [Resources]
-      summary: Create a role for a specific resource
+      summary: Get all resources
       security:
         - bearerAuth: []
-      parameters:
-        - name: resourceType
-          in: path
-          required: true
-          schema:
-            type: string
-          description: The type of the resource (e.g., "Organization", "Project")
-        - name: resourceId
-          in: path
-          required: true
-          schema:
-            type: string
-          description: The unique identifier of the resource
+      responses:
+        '200':
+          description: List of resources retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Resource'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - insufficient permissions
+    post:
+      tags: [Resources]
+      summary: Create a new resource
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateResourceRequest'
+      responses:
+        '201':
+          description: Resource created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Bad request - validation error
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - insufficient permissions
+
+  /resources/roles:
+    post:
+      tags: [Resources]
+      summary: Create a role for a resource
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -513,34 +596,14 @@ paths:
         '403':
           description: Forbidden - insufficient permissions
         '409':
-          description: Conflict - role with this name already exists for this resource
+          description: Conflict - role with this name already exists
 
-  /resources/{resourceType}/{resourceId}/roles/{roleId}/assign:
+  /resources/assign-role:
     post:
       tags: [Resources]
       summary: Assign a user to a resource role
       security:
         - bearerAuth: []
-      parameters:
-        - name: resourceType
-          in: path
-          required: true
-          schema:
-            type: string
-          description: The type of the resource
-        - name: resourceId
-          in: path
-          required: true
-          schema:
-            type: string
-          description: The unique identifier of the resource
-        - name: roleId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-          description: The ID of the resource role
       requestBody:
         required: true
         content:
@@ -565,39 +628,18 @@ paths:
         '409':
           description: Conflict - user already has a role for this resource
 
-  /resources/{resourceType}/{resourceId}/roles/{roleId}/assign/{userId}:
-    delete:
+  /resources/revoke-role:
+    post:
       tags: [Resources]
       summary: Remove a user from a resource role
       security:
         - bearerAuth: []
-      parameters:
-        - name: resourceType
-          in: path
-          required: true
-          schema:
-            type: string
-          description: The type of the resource
-        - name: resourceId
-          in: path
-          required: true
-          schema:
-            type: string
-          description: The unique identifier of the resource
-        - name: roleId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-          description: The ID of the resource role
-        - name: userId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-          description: The ID of the user to remove from the role
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RevokeUserResourceRole'
       responses:
         '200':
           description: User removed from resource role successfully
@@ -612,47 +654,7 @@ paths:
         '404':
           description: User resource role assignment not found
 
-  /resources/{resourceType}/{resourceId}/users/{userId}/permissions:
-    get:
-      tags: [Resources]
-      summary: Get permissions for a user in a specific resource
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: resourceType
-          in: path
-          required: true
-          schema:
-            type: string
-          description: The type of the resource
-        - name: resourceId
-          in: path
-          required: true
-          schema:
-            type: string
-          description: The unique identifier of the resource
-        - name: userId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-          description: The ID of the user
-      responses:
-        '200':
-          description: User permissions retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserResourcePermissions'
-        '401':
-          description: Unauthorized
-        '403':
-          description: Forbidden - insufficient permissions
-        '404':
-          description: User has no role in this resource
-
-  /resources/{resourceType}/{resourceId}/test-read:
+  /resources/{resourceId}/test-read:
     get:
       tags: [Resources]
       summary: Test endpoint for read permission authorization
@@ -660,12 +662,6 @@ paths:
       security:
         - bearerAuth: []
       parameters:
-        - name: resourceType
-          in: path
-          required: true
-          schema:
-            type: string
-          description: The type of the resource
         - name: resourceId
           in: path
           required: true
@@ -691,7 +687,7 @@ paths:
         '403':
           description: Forbidden - insufficient permissions for this resource
 
-  /resources/{resourceType}/{resourceId}/test-write:
+  /resources/{resourceId}/test-write:
     post:
       tags: [Resources]
       summary: Test endpoint for write permission authorization
@@ -699,12 +695,6 @@ paths:
       security:
         - bearerAuth: []
       parameters:
-        - name: resourceType
-          in: path
-          required: true
-          schema:
-            type: string
-          description: The type of the resource
         - name: resourceId
           in: path
           required: true
@@ -771,18 +761,189 @@ paths:
               schema:
                 $ref: '#/components/schemas/OpenIDConfiguration'
 
-  /oauth/jwks.json:
+  # User Details Endpoints
+  /user-details:
     get:
-      tags: [OIDC]
-      summary: Get JSON Web Key Set (JWKS)
-      description: Returns the JSON Web Key Set containing public keys for verifying JWT tokens
+      tags: [UserDetails]
+      summary: Get all user details
+      security:
+        - bearerAuth: []
       responses:
         '200':
-          description: JSON Web Key Set
+          description: List of user details retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/JWKS'
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserDetails'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - insufficient permissions
+
+  /user-details/{id}:
+    get:
+      tags: [UserDetails]
+      summary: Get user details by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: User ID
+      responses:
+        '200':
+          description: User details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDetails'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - insufficient permissions
+        '404':
+          description: User details not found
+    put:
+      tags: [UserDetails]
+      summary: Update user details
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: User ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserDetailsRequest'
+      responses:
+        '200':
+          description: User details updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDetails'
+        '400':
+          description: Bad request - validation error
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - insufficient permissions
+        '404':
+          description: User details not found
+    delete:
+      tags: [UserDetails]
+      summary: Delete user details
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: User ID
+      responses:
+        '204':
+          description: User details deleted successfully
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - insufficient permissions
+        '404':
+          description: User details not found
+
+  /user-details/{id}/subordinates:
+    get:
+      tags: [UserDetails]
+      summary: Get user's subordinates
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: User ID
+      responses:
+        '200':
+          description: User subordinates retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserDetails'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - insufficient permissions
+        '404':
+          description: User not found
+
+  # Permissions Endpoints
+  /permissions:
+    get:
+      tags: [Permissions]
+      summary: Get all available permissions
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of permissions retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - insufficient permissions
+
+  /permissions/check:
+    post:
+      tags: [Permissions]
+      summary: Check if a user has a specific permission on a resource
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckUserPermissionRequest'
+      responses:
+        '200':
+          description: Permission check completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckUserPermissionResponse'
+        '400':
+          description: Bad request - missing required parameters
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - insufficient permissions to check user permissions
+        '404':
+          description: User not found
 
 components:
   securitySchemes:
@@ -847,11 +1008,25 @@ components:
           format: password
           minLength: 6
           description: User password (minimum 6 characters)
-        roles:
-          type: array
-          items:
-            type: string
-          description: Optional array of role names to assign
+        isSuperAdmin:
+          type: boolean
+          description: Whether the user should be a super admin
+        firstName:
+          type: string
+          description: User's first name
+        lastName:
+          type: string
+          description: User's last name
+        nickName:
+          type: string
+          description: User's nickname
+        contactNumber:
+          type: string
+          description: User's contact number
+        reportTo:
+          type: string
+          format: uuid
+          description: ID of the user's manager
 
     UpdateUserRoles:
       type: object
@@ -863,6 +1038,113 @@ components:
           items:
             type: string
           description: Array of role names to assign to the user
+
+    UpdateUserSuperAdminRequest:
+      type: object
+      required:
+        - isSuperAdmin
+      properties:
+        isSuperAdmin:
+          type: boolean
+          description: Whether the user should be a super admin
+
+    UserDetails:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: User ID
+        firstName:
+          type: string
+          nullable: true
+          description: User's first name
+        lastName:
+          type: string
+          nullable: true
+          description: User's last name
+        nickName:
+          type: string
+          nullable: true
+          description: User's nickname
+        contactNumber:
+          type: string
+          nullable: true
+          description: User's contact number
+        reportToId:
+          type: string
+          format: uuid
+          nullable: true
+          description: ID of the user's manager
+        createdAt:
+          type: string
+          format: date-time
+          description: Details creation timestamp
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp
+        user:
+          type: object
+          properties:
+            email:
+              type: string
+              format: email
+              description: User email
+            isSuperAdmin:
+              type: boolean
+              description: Whether user is super admin
+            isActive:
+              type: boolean
+              description: Whether user is active
+        reportTo:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: Manager's user ID
+            email:
+              type: string
+              format: email
+              description: Manager's email
+            details:
+              type: object
+              nullable: true
+              properties:
+                firstName:
+                  type: string
+                  nullable: true
+                  description: Manager's first name
+                lastName:
+                  type: string
+                  nullable: true
+                  description: Manager's last name
+                nickName:
+                  type: string
+                  nullable: true
+                  description: Manager's nickname
+
+    UpdateUserDetailsRequest:
+      type: object
+      properties:
+        firstName:
+          type: string
+          description: User's first name
+        lastName:
+          type: string
+          description: User's last name
+        nickName:
+          type: string
+          description: User's nickname
+        contactNumber:
+          type: string
+          description: User's contact number
+        reportTo:
+          type: string
+          format: uuid
+          description: ID of the user's manager
 
     # Role and Permission schemas
     Role:
@@ -925,6 +1207,40 @@ components:
           $ref: '#/components/schemas/Permission'
 
     # Resource-based RBAC schemas
+    Resource:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Resource identifier
+        name:
+          type: string
+          description: Resource name
+        description:
+          type: string
+          nullable: true
+          description: Resource description
+        createdAt:
+          type: string
+          format: date-time
+          description: Resource creation timestamp
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp
+
+    CreateResourceRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Resource name
+        description:
+          type: string
+          description: Optional resource description
+
     ResourceRole:
       type: object
       properties:
@@ -976,6 +1292,9 @@ components:
         description:
           type: string
           description: Optional role description
+        resourceId:
+          type: string
+          description: Optional resource ID for resource-specific roles
         permissions:
           type: array
           items:
@@ -993,6 +1312,42 @@ components:
           type: string
           format: uuid
           description: ID of the user to assign the role to
+
+    AssignUserResourceRole:
+      type: object
+      required:
+        - userId
+        - roleId
+      properties:
+        userId:
+          type: string
+          format: uuid
+          description: ID of the user to assign the role to
+        roleId:
+          type: string
+          description: ID of the role to assign
+        resourceId:
+          type: string
+          nullable: true
+          description: Optional resource ID for resource-specific roles
+
+    RevokeUserResourceRole:
+      type: object
+      required:
+        - userId
+        - roleId
+      properties:
+        userId:
+          type: string
+          format: uuid
+          description: ID of the user to revoke the role from
+        roleId:
+          type: string
+          description: ID of the role to revoke
+        resourceId:
+          type: string
+          nullable: true
+          description: Optional resource ID for resource-specific roles
 
     UserResourceRole:
       type: object
@@ -1021,6 +1376,44 @@ components:
             type: string
           description: Array of permission verbs the user has for the resource
           example: ['read', 'update']
+
+    CheckUserPermissionRequest:
+      type: object
+      required:
+        - userId
+        - permission
+        - resourceId
+      properties:
+        userId:
+          type: string
+          description: The unique identifier of the user
+        permission:
+          type: string
+          description: The permission to check (e.g., "resource:read")
+        resourceId:
+          type: string
+          description: The unique identifier of the resource
+
+    CheckUserPermissionResponse:
+      type: object
+      properties:
+        hasPermission:
+          type: boolean
+          description: Whether the user has the permission
+        userPermissions:
+          type: array
+          items:
+            type: string
+          description: List of user's permissions
+        checkedPermission:
+          type: string
+          description: The permission that was checked
+        resourceId:
+          type: string
+          description: The resource ID that was checked
+        reason:
+          type: string
+          description: Reason for permission grant (only present for super admins)
 
     # Authentication schemas
     RegisterRequest:
@@ -1109,6 +1502,30 @@ components:
           type: object
           nullable: true
           description: Decoded token payload if valid
+          properties:
+            userId:
+              type: string
+              description: User ID from token
+            isSuperAdmin:
+              type: boolean
+              description: Whether user is super admin
+            permissions:
+              type: array
+              items:
+                type: string
+              description: User permissions
+            role:
+              type: string
+              description: User role
+            username:
+              type: string
+              description: User email (username)
+            iat:
+              type: number
+              description: Token issued at timestamp
+            exp:
+              type: number
+              description: Token expiration timestamp
         error:
           type: object
           nullable: true

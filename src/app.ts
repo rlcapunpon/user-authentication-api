@@ -15,18 +15,22 @@ const app: Express = express();
 
 // Request logging middleware for debugging
 app.use((req: Request, res: Response, next: NextFunction) => {
-  // Log details for /me endpoint specifically
-  if (req.path === '/api/auth/me') {
+  // Log details for all auth endpoints to debug routing issues
+  if (req.path.startsWith('/api/auth')) {
     logger.debug({
-      msg: 'Incoming request to /me endpoint',
+      msg: 'Incoming auth request',
       method: req.method,
       path: req.path,
+      originalUrl: req.originalUrl,
+      url: req.url,
       ip: req.ip,
       userAgent: req.get('user-agent'),
       contentLength: req.get('content-length'),
       authorization: req.get('authorization') ? '[PRESENT]' : '[MISSING]',
+      params: req.params,
+      query: req.query,
+      pathSegments: req.path.split('/'),
       headersCount: Object.keys(req.headers).length,
-      totalHeaderSize: JSON.stringify(req.headers).length,
     });
   }
   next();
@@ -103,9 +107,42 @@ app.get('/health', (req: Request, res: Response) => {
   res.status(200).send('OK');
 });
 
+// 404 handler with logging to catch unmatched routes
+app.use((req: Request, res: Response, next: NextFunction) => {
+  logger.error({
+    msg: '404 - Route not found',
+    method: req.method,
+    path: req.path,
+    originalUrl: req.originalUrl,
+    ip: req.ip,
+    userAgent: req.get('user-agent'),
+    timestamp: new Date().toISOString(),
+  });
+  
+  console.error('[404] Route not found:', {
+    method: req.method,
+    path: req.path,
+    originalUrl: req.originalUrl,
+    params: req.params,
+    query: req.query,
+    pathSegments: req.path.split('/'),
+    timestamp: new Date().toISOString(),
+  });
+  
+  res.status(404).json({ message: 'Route not found' });
+});
+
 // Error handler
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  console.error(err.stack);
+  console.error('Express Error Handler:', err.stack);
+  logger.error({
+    msg: 'Express error handler',
+    error: err.message,
+    stack: err.stack,
+    method: req.method,
+    path: req.path,
+    timestamp: new Date().toISOString(),
+  });
   res.status(500).json({ message: 'Something broke!' });
 });
 

@@ -239,15 +239,48 @@ export const deactivateMyAccount = async (req: Request, res: Response) => {
 };
 
 export const verifyEmail = async (req: Request, res: Response) => {
+  console.log('[CONTROLLER] verifyEmail controller called', {
+    method: req.method,
+    path: req.path,
+    originalUrl: req.originalUrl,
+    params: req.params,
+    timestamp: new Date().toISOString(),
+  });
+
   const { verificationCode } = req.params;
+
+  // Enhanced logging for debugging
+  console.log('[CONTROLLER] Email verification controller details', {
+    verificationCode: verificationCode ? verificationCode.substring(0, 8) + '...' : 'UNDEFINED',
+    verificationCodeLength: verificationCode?.length || 0,
+    verificationCodePresent: !!verificationCode,
+    paramsObject: req.params,
+    paramsKeys: Object.keys(req.params),
+    method: req.method,
+    path: req.path,
+    originalUrl: req.originalUrl,
+    timestamp: new Date().toISOString(),
+  });
+
+  if (!verificationCode) {
+    console.error('[CONTROLLER] No verification code provided in params', {
+      params: req.params,
+      path: req.path,
+      originalUrl: req.originalUrl,
+      timestamp: new Date().toISOString(),
+    });
+    return res.status(400).json({ message: 'Verification code is required' });
+  }
 
   logger.debug({
     msg: 'Email verification attempt',
     verificationCode: verificationCode.substring(0, 8) + '...', // Log partial code for security
+    verificationCodeLength: verificationCode.length,
     ip: req.ip,
     userAgent: req.get('User-Agent'),
     method: req.method,
     path: req.path,
+    originalUrl: req.originalUrl,
     headers: {
       'content-length': req.get('content-length'),
       'content-type': req.get('content-type'),
@@ -256,7 +289,18 @@ export const verifyEmail = async (req: Request, res: Response) => {
   });
 
   try {
+    console.log('[CONTROLLER] Calling authService.verifyEmail', {
+      verificationCode: verificationCode.substring(0, 8) + '...',
+      timestamp: new Date().toISOString(),
+    });
+
     const result = await authService.verifyEmail(verificationCode);
+
+    console.log('[CONTROLLER] authService.verifyEmail successful', {
+      verificationCode: verificationCode.substring(0, 8) + '...',
+      result: result,
+      timestamp: new Date().toISOString(),
+    });
 
     logger.debug({
       msg: 'Email verification successful',
@@ -277,6 +321,16 @@ export const verifyEmail = async (req: Request, res: Response) => {
     res.status(200).json(result);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    console.error('[CONTROLLER] authService.verifyEmail failed', {
+      verificationCode: verificationCode.substring(0, 8) + '...',
+      error: error instanceof Error ? {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+      } : error,
+      timestamp: new Date().toISOString(),
+    });
 
     logger.debug({
       msg: 'Email verification failed',

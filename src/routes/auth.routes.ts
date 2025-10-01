@@ -427,6 +427,20 @@ import { authGuard } from '../middleware/auth.middleware';
 
 const router = Router();
 
+// Add logging middleware for all auth routes
+router.use((req, res, next) => {
+  console.log(`[AUTH ROUTE] ${req.method} ${req.path}`, {
+    method: req.method,
+    path: req.path,
+    originalUrl: req.originalUrl,
+    params: req.params,
+    query: req.query,
+    body: req.method === 'POST' ? (req.body || {}) : undefined,
+    timestamp: new Date().toISOString(),
+  });
+  next();
+});
+
 router.post('/register', validate(registerSchema), register);
 router.post('/login', validate(loginSchema), login);
 router.post('/refresh', validate(refreshTokenSchema), refresh);
@@ -435,7 +449,54 @@ router.get('/me', authGuard, getMe);
 router.put('/me', authGuard, validate(updateMyProfileSchema), updateMe);
 router.delete('/me', authGuard, deactivateMyAccount);
 router.post('/validate', authGuard, validateToken);
-router.post('/verify/:verificationCode', verifyEmail);
+
+// Add specific logging for email verification route
+router.post('/verify/:verificationCode', (req, res, next) => {
+  console.log('[EMAIL VERIFICATION ROUTE MATCHED]', {
+    method: req.method,
+    path: req.path,
+    originalUrl: req.originalUrl,
+    params: req.params,
+    verificationCode: req.params.verificationCode,
+    verificationCodeLength: req.params.verificationCode?.length || 0,
+    timestamp: new Date().toISOString(),
+  });
+  next();
+}, verifyEmail);
+
 router.post('/resend-verification', validate(resendVerificationSchema), resendVerification);
+
+// Add debug routes to test routing patterns
+router.get('/debug/routes', (req, res) => {
+  console.log('[DEBUG] Route listing endpoint called');
+  const routes = [
+    'GET /auth/debug/routes',
+    'POST /auth/register',
+    'POST /auth/login', 
+    'POST /auth/refresh',
+    'POST /auth/logout',
+    'GET /auth/me',
+    'PUT /auth/me',
+    'DELETE /auth/me',
+    'POST /auth/validate',
+    'POST /auth/verify/:verificationCode',
+    'POST /auth/resend-verification',
+  ];
+  res.json({ message: 'Auth routes debug', routes });
+});
+
+// Add a test endpoint for verify route
+router.get('/verify/test', (req, res) => {
+  console.log('[DEBUG] Verify test endpoint called');
+  res.json({ 
+    message: 'Email verification route is working',
+    endpoint: 'POST /api/auth/verify/:verificationCode',
+    example: 'POST /api/auth/verify/1234567890abcdef1234567890abcdef',
+    format: '32-character hexadecimal string (0-9, a-f)',
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Debug route removed to avoid conflicts
 
 export default router;
