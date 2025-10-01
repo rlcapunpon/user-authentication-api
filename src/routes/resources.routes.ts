@@ -9,7 +9,7 @@ import { Router } from 'express';
 import { authGuard } from '../middleware/auth.middleware';
 import { rbacGuard, authorizeResource } from '../middleware/rbac.middleware';
 import { validate } from '../middleware/validate';
-import { getResources, createResource, createRole } from '../controllers/rbac.controller';
+import { getResources, createResource, createRole, getUserRoleForResource } from '../controllers/rbac.controller';
 import { assignUserResourceRole, revokeUserResourceRole } from '../controllers/user.controller';
 import { 
   createResourceSchema,
@@ -36,7 +36,7 @@ const router = Router();
  *       403:
  *         description: Forbidden
  */
-router.get('/', authGuard, rbacGuard(['read_resources']), getResources);
+router.get('/', authGuard, getResources);
 
 /**
  * @swagger
@@ -67,7 +67,7 @@ router.get('/', authGuard, rbacGuard(['read_resources']), getResources);
  *       403:
  *         description: Forbidden
  */
-router.post('/', authGuard, rbacGuard(['create_resource']), validate(createResourceSchema), createResource);
+router.post('/', authGuard, rbacGuard(['resource:create']), validate(createResourceSchema), createResource);
 
 /**
  * @swagger
@@ -103,7 +103,7 @@ router.post('/', authGuard, rbacGuard(['create_resource']), validate(createResou
  *       403:
  *         description: Forbidden
  */
-router.post('/roles', authGuard, rbacGuard(['create_role']), validate(createRoleSchema), createRole);
+router.post('/roles', authGuard, rbacGuard(['role:create']), validate(createRoleSchema), createRole);
 
 /**
  * @swagger
@@ -137,7 +137,7 @@ router.post('/roles', authGuard, rbacGuard(['create_role']), validate(createRole
  *       403:
  *         description: Forbidden
  */
-router.post('/assign-role', authGuard, rbacGuard(['manage_resource_roles']), validate(assignUserResourceRoleSchema), assignUserResourceRole);
+router.post('/assign-role', authGuard, rbacGuard(['role:assign']), validate(assignUserResourceRoleSchema), assignUserResourceRole);
 
 /**
  * @swagger
@@ -171,7 +171,7 @@ router.post('/assign-role', authGuard, rbacGuard(['manage_resource_roles']), val
  *       403:
  *         description: Forbidden
  */
-router.post('/revoke-role', authGuard, rbacGuard(['manage_resource_roles']), validate(revokeUserResourceRoleSchema), revokeUserResourceRole);
+router.post('/revoke-role', authGuard, rbacGuard(['role:assign']), validate(revokeUserResourceRoleSchema), revokeUserResourceRole);
 
 /**
  * @swagger
@@ -260,5 +260,58 @@ router.post(
     res.status(200).json({ message: 'Access granted', action: 'write' });
   }
 );
+
+/**
+ * @swagger
+ * /resources/{resourceId}/user-role:
+ *   get:
+ *     summary: Get the role of the authenticated user for a specific resource
+ *     description: Retrieve the role assigned to the currently authenticated user for a specific resource
+ *     tags: [Resources]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: resourceId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The unique identifier of the resource
+ *     responses:
+ *       200:
+ *         description: User role retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 role:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       description: The role ID
+ *                     name:
+ *                       type: string
+ *                       description: The role name
+ *                     permissions:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                       description: List of permissions for this role
+ *                 resourceId:
+ *                   type: string
+ *                   description: The resource ID
+ *                 userId:
+ *                   type: string
+ *                   description: The user ID
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: No role found for this user on the specified resource
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/:resourceId/user-role', authGuard, getUserRoleForResource);
 
 export default router;

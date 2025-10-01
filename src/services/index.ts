@@ -8,7 +8,9 @@ export {
   createResource, 
   createRole, 
   getAvailableRoles, 
-  getUserPermissionsFromRoles 
+  getUserPermissionsFromRoles,
+  getUserAccessibleResources,
+  getUserRoleForResource
 } from './rbac.service';
 export * from './config.service';
 export * from './emailVerification.service';

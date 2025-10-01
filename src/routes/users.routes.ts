@@ -33,7 +33,7 @@ router.use(authGuard);
  *       403:
  *         description: Forbidden
  */
-router.get('/', rbacGuard(['read_users']), listUsers);
+router.get('/', rbacGuard(['user:read']), listUsers);
 
 /**
  * @swagger
@@ -59,7 +59,7 @@ router.get('/', rbacGuard(['read_users']), listUsers);
  *       404:
  *         description: User not found
  */
-router.get('/:id', rbacGuard(['read_users']), validate(userIdSchema), getUser);
+router.get('/:id', rbacGuard(['user:read']), validate(userIdSchema), getUser);
 
 /**
  * @swagger
@@ -85,7 +85,7 @@ router.get('/:id', rbacGuard(['read_users']), validate(userIdSchema), getUser);
  *       403:
  *         description: Forbidden
  */
-router.post('/', rbacGuard(['create_user']), validate(createUserSchema), createUser);
+router.post('/', rbacGuard(['user:create']), validate(createUserSchema), createUser);
 
 /**
  * @swagger
@@ -156,7 +156,7 @@ router.put('/:id/super-admin', requireSuperAdmin(), validate(updateUserSuperAdmi
  *       403:
  *         description: Forbidden
  */
-router.post('/assign-role', rbacGuard(['update_users']), validate(assignUserResourceRoleSchema), assignUserResourceRole);
+router.post('/assign-role', rbacGuard(['user:update']), validate(assignUserResourceRoleSchema), assignUserResourceRole);
 
 /**
  * @swagger
@@ -190,7 +190,7 @@ router.post('/assign-role', rbacGuard(['update_users']), validate(assignUserReso
  *       403:
  *         description: Forbidden
  */
-router.post('/revoke-role', rbacGuard(['update_users']), validate(revokeUserResourceRoleSchema), revokeUserResourceRole);
+router.post('/revoke-role', rbacGuard(['user:update']), validate(revokeUserResourceRoleSchema), revokeUserResourceRole);
 
 /**
  * @swagger
@@ -216,7 +216,7 @@ router.post('/revoke-role', rbacGuard(['update_users']), validate(revokeUserReso
  *       404:
  *         description: User not found
  */
-router.put('/:id/deactivate', rbacGuard(['update_users']), validate(userIdSchema), deactivateUser); // Using PUT for deactivation
+router.put('/:id/deactivate', rbacGuard(['user:update']), validate(userIdSchema), deactivateUser); // Using PUT for deactivation
 
 /**
  * @swagger
@@ -242,6 +242,6 @@ router.put('/:id/deactivate', rbacGuard(['update_users']), validate(userIdSchema
  *       404:
  *         description: User not found
  */
-router.delete('/:id', rbacGuard(['delete_user']), validate(userIdSchema), deleteUser);
+router.delete('/:id', rbacGuard(['user:delete']), validate(userIdSchema), deleteUser);
 
 export default router;

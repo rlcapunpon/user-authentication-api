@@ -254,6 +254,63 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /auth/verify/{verificationCode}:
+    post:
+      tags: [Auth]
+      summary: Verify user email using verification code
+      parameters:
+        - in: path
+          name: verificationCode
+          required: true
+          schema:
+            type: string
+            description: The email verification code sent to the user
+      responses:
+        '200':
+          description: Email verified successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Email verified successfully"
+        '400':
+          description: Bad request - invalid, expired, or already used verification code
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/resend-verification:
+    post:
+      tags: [Auth]
+      summary: Resend email verification code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResendVerificationRequest'
+      responses:
+        '200':
+          description: Verification email sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Verification email sent successfully"
+        '400':
+          description: Bad request - user not found, already verified, or invalid email
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   # User Management Endpoints
   /users:
     get:
@@ -505,36 +562,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /permissions:
-    get:
-      tags: [RBAC]
-      summary: Get all global permissions
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: List of permissions retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Permission'
-        '401':
-          description: Unauthorized
-        '403':
-          description: Forbidden - insufficient permissions
-
   # Resource-Based RBAC Endpoints
   /resources:
     get:
       tags: [Resources]
-      summary: Get all resources
+      summary: Get resources accessible to the authenticated user
+      description: Retrieve all resources that the authenticated user has access to based on their assigned roles and permissions. Super admins see all resources, while regular users only see resources they have been granted access to.
       security:
         - bearerAuth: []
       responses:
         '200':
-          description: List of resources retrieved successfully
+          description: List of accessible resources retrieved successfully
           content:
             application/json:
               schema:
@@ -720,6 +758,40 @@ paths:
         '403':
           description: Forbidden - insufficient permissions for this resource
 
+  /resources/{resourceId}/user-role:
+    get:
+      tags: [Resources]
+      summary: Get the authenticated user's role for a specific resource
+      description: Retrieve the role of the authenticated user for a specific resource. Returns the resource-specific role if assigned, otherwise returns the user's global role. Super admins always return their super admin status.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: resourceId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The unique identifier of the resource
+      responses:
+        '200':
+          description: User role retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResourceRoleResponse'
+        '401':
+          description: Unauthorized - authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User has no role for this resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   # Configuration Endpoints
   /config/permissions:
     get:
@@ -761,6 +833,19 @@ paths:
               schema:
                 $ref: '#/components/schemas/OpenIDConfiguration'
 
+  /oauth/jwks.json:
+    get:
+      tags: [OIDC]
+      summary: Get JSON Web Key Set (JWKS)
+      description: Returns the JSON Web Key Set containing the public keys used to verify JWT tokens
+      responses:
+        '200':
+          description: JSON Web Key Set
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JWKS'
+
   # User Details Endpoints
   /user-details:
     get:
@@ -779,8 +864,16 @@ paths:
                   $ref: '#/components/schemas/UserDetails'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '403':
           description: Forbidden - insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /user-details/{id}:
     get:
@@ -805,10 +898,22 @@ paths:
                 $ref: '#/components/schemas/UserDetails'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '403':
           description: Forbidden - insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '404':
           description: User details not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
     put:
       tags: [UserDetails]
       summary: Update user details
@@ -837,12 +942,28 @@ paths:
                 $ref: '#/components/schemas/UserDetails'
         '400':
           description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '403':
           description: Forbidden - insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '404':
           description: User details not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
     delete:
       tags: [UserDetails]
       summary: Delete user details
@@ -861,10 +982,22 @@ paths:
           description: User details deleted successfully
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '403':
           description: Forbidden - insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '404':
           description: User details not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /user-details/{id}/subordinates:
     get:
@@ -891,10 +1024,22 @@ paths:
                   $ref: '#/components/schemas/UserDetails'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '403':
           description: Forbidden - insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '404':
           description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   # Permissions Endpoints
   /permissions:
@@ -966,13 +1111,12 @@ components:
           type: string
           format: email
           description: User email address
-        organizationCode:
-          type: string
-          nullable: true
-          description: Organization code the user belongs to
         isActive:
           type: boolean
           description: Whether the user account is active
+        isSuperAdmin:
+          type: boolean
+          description: Whether the user has super admin privileges
         createdAt:
           type: string
           format: date-time
@@ -1377,6 +1521,27 @@ components:
           description: Array of permission verbs the user has for the resource
           example: ['read', 'update']
 
+    UserResourceRoleResponse:
+      type: object
+      properties:
+        role:
+          type: string
+          description: The user's role for the resource
+          example: "editor"
+        isSuperAdmin:
+          type: boolean
+          description: Whether the user is a super admin (always true for super admins regardless of resource)
+          example: false
+        resourceId:
+          type: string
+          description: The resource identifier
+          example: "resource_123"
+        roleType:
+          type: string
+          enum: [resource-specific, global]
+          description: Whether this is a resource-specific role or a global role fallback
+          example: "resource-specific"
+
     CheckUserPermissionRequest:
       type: object
       required:
@@ -1473,14 +1638,15 @@ components:
           minLength: 6
           description: New password (minimum 6 characters)
 
-    ValidateTokenRequest:
+    ResendVerificationRequest:
       type: object
       required:
-        - token
+        - email
       properties:
-        token:
+        email:
           type: string
-          description: JWT token to validate
+          format: email
+          description: The email address to resend verification for
 
     AuthTokens:
       type: object

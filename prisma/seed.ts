@@ -78,10 +78,10 @@ async function main() {
 
   // Create users for each role
   const superAdminUser = await (prisma as any).user.upsert({
-    where: { email: 'superadmin@example.com' },
+    where: { email: 'superadmin@dvconsultingph.com' },
     update: {},
     create: {
-      email: 'superadmin@example.com',
+      email: 'superadmin@dvconsultingph.com',
       isActive: true,
       isSuperAdmin: true,
       credential: {
@@ -92,11 +92,25 @@ async function main() {
     },
   });
 
-  const approverUser = await (prisma as any).user.upsert({
-    where: { email: 'approver@example.com' },
+  // Create UserVerification record for superAdminUser
+  await (prisma as any).userVerification.upsert({
+    where: { userId: superAdminUser.id },
     update: {},
     create: {
-      email: 'approver@example.com',
+      userId: superAdminUser.id,
+      isEmailVerified: true,
+      isContactVerified: false,
+      isReporterAssigned: false,
+      verificationStatus: 'verified',
+      userStatus: 'active',
+    },
+  });
+
+  const approverUser = await (prisma as any).user.upsert({
+    where: { email: 'approver@dvconsultingph.com' },
+    update: {},
+    create: {
+      email: 'approver@dvconsultingph.com',
       isActive: true,
       isSuperAdmin: false,
       credential: {
@@ -104,14 +118,28 @@ async function main() {
           passwordHash: await hashPassword('password'),
         },
       },
+    },
+  });
+
+  // Create UserVerification record for approverUser
+  await (prisma as any).userVerification.upsert({
+    where: { userId: approverUser.id },
+    update: {},
+    create: {
+      userId: approverUser.id,
+      isEmailVerified: true,
+      isContactVerified: false,
+      isReporterAssigned: true,
+      verificationStatus: 'verified',
+      userStatus: 'active',
     },
   });
 
   const staffUser = await (prisma as any).user.upsert({
-    where: { email: 'staff@example.com' },
+    where: { email: 'staff@dvconsultingph.com' },
     update: {},
     create: {
-      email: 'staff@example.com',
+      email: 'staff@dvconsultingph.com',
       isActive: true,
       isSuperAdmin: false,
       credential: {
@@ -122,11 +150,25 @@ async function main() {
     },
   });
 
-  const clientUser = await (prisma as any).user.upsert({
-    where: { email: 'client@example.com' },
+  // Create UserVerification record for staffUser
+  await (prisma as any).userVerification.upsert({
+    where: { userId: staffUser.id },
     update: {},
     create: {
-      email: 'client@example.com',
+      userId: staffUser.id,
+      isEmailVerified: true,
+      isContactVerified: false,
+      isReporterAssigned: true,
+      verificationStatus: 'verified',
+      userStatus: 'active',
+    },
+  });
+
+  const clientUser = await (prisma as any).user.upsert({
+    where: { email: 'client@dvconsultingph.com' },
+    update: {},
+    create: {
+      email: 'client@dvconsultingph.com',
       isActive: true,
       isSuperAdmin: false,
       credential: {
@@ -134,6 +176,20 @@ async function main() {
           passwordHash: await hashPassword('password'),
         },
       },
+    },
+  });
+
+  // Create UserVerification record for clientUser
+  await (prisma as any).userVerification.upsert({
+    where: { userId: clientUser.id },
+    update: {},
+    create: {
+      userId: clientUser.id,
+      isEmailVerified: true,
+      isContactVerified: false,
+      isReporterAssigned: true,
+      verificationStatus: 'verified',
+      userStatus: 'active',
     },
   });
 

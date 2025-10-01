@@ -159,3 +159,34 @@
 - JWT payload now includes username field using user email as value
 
 **Status**: Step 6 completed successfully. JWT payload enhanced with username field following TDD principles.
+
+## Step 10-01-2025.STEP1 - OpenAPI DTO Updates
+- Updated `openapi.yaml` with proper DTO definitions for all endpoints
+- Added comprehensive schema definitions for requests and responses
+- Ensured all endpoints have proper parameter and response documentation
+- Build passes
+- Tests pass (126/126 total tests)
+
+**Status**: OpenAPI specification updated with complete DTO definitions.
+
+## Step 10-01-2025.STEP2 - Resource Filtering Implementation
+- **Test Implementation**: Created comprehensive test suite in `tests/resources-endpoints.test.ts` with failing tests first (TDD approach)
+- **Service Layer**: Added `getUserAccessibleResources` function in `src/services/rbac.service.ts` for user-specific filtering
+- **Controller Update**: Modified `getResources` in `src/controllers/rbac.controller.ts` to filter resources based on JWT user permissions
+- **Route Configuration**: Removed RBAC guard from GET /resources route and updated permission strings across all routes
+- **API Documentation**: Updated `openapi.yaml` to reflect user-specific filtering behavior
+- **Validation Results**: All 126 tests passing, TypeScript compilation successful, resource filtering works for all user types
+- **Technical Details**: Super admins see all resources, regular users see only assigned resources via UserResourceRole relationships
+
+**Status**: ✅ Complete - GET /resources endpoint now returns only resources the authenticated user has access to based on their JWT permissions.
+
+## Step 10-01-2025.STEP3 - User Role Retrieval Endpoint
+- **Test Implementation**: Created comprehensive test suite in `tests/resources-endpoints.test.ts` with 4 new failing tests for GET /resources/:resourceId/user-role endpoint (TDD approach)
+- **Service Layer**: Added `getUserRoleForResource` function in `src/services/rbac.service.ts` that handles both resource-specific roles and global role fallbacks
+- **Controller Implementation**: Added `getUserRoleForResource` controller in `src/controllers/rbac.controller.ts` with JWT user extraction and service integration
+- **Route Configuration**: Added GET /resources/:resourceId/user-role route with authentication guard and comprehensive Swagger documentation
+- **API Documentation**: Updated `openapi.yaml` with new endpoint documentation and `UserResourceRoleResponse` schema definition
+- **Validation Results**: All 130 tests passing, TypeScript compilation successful, endpoint properly handles super admins, resource-specific roles, and global role fallbacks
+- **Technical Details**: Returns resource-specific role if assigned, otherwise returns user's global role; super admins always return isSuperAdmin=true
+
+**Status**: ✅ Complete - GET /resources/:resourceId/user-role endpoint implemented and tested following strict TDD methodology.

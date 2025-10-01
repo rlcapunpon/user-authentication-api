@@ -25,7 +25,12 @@ export const getRoles = async (req: Request, res: Response) => {
  */
 export const getResources = async (req: Request, res: Response) => {
   try {
-    const resources = await rbacService.getAllResources();
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: 'User not authenticated' });
+    }
+
+    const resources = await rbacService.getUserAccessibleResources(userId);
     res.json(resources);
   } catch (error) {
     // Log the error for debugging purposes (optional, depending on logging setup)
@@ -124,5 +129,33 @@ export const checkUserPermission = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error checking user permission:', error);
     res.status(500).json({ message: 'Failed to check user permission' });
+  }
+};
+
+/**
+ * Get the role of the authenticated user for a specific resource
+ */
+export const getUserRoleForResource = async (req: Request, res: Response) => {
+  try {
+    const { resourceId } = req.params;
+    const userId = req.user!.userId;
+
+    const userResourceRole = await rbacService.getUserRoleForResource(userId, resourceId);
+
+    if (!userResourceRole) {
+      return res.status(404).json({
+        message: 'No role found for this user on the specified resource'
+      });
+    }
+
+    res.json({
+      role: userResourceRole.role,
+      resourceId,
+      userId
+    });
+
+  } catch (error) {
+    console.error('Error getting user role for resource:', error);
+    res.status(500).json({ message: 'Failed to get user role for resource' });
   }
 };
