@@ -159,3 +159,25 @@ export const getUserRoleForResource = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Failed to get user role for resource' });
   }
 };
+
+/**
+ * Handles the request to get accessible resources for the authenticated user (paginated v2)
+ * @param req - The Express request object.
+ * @param res - The Express response object.
+ */
+export const getResourcesV2 = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: 'User not authenticated' });
+    }
+
+    const page = parseInt(req.query.page as string, 10) || 1;
+    const limit = parseInt(req.query.limit as string, 10) || 10;
+    const result = await rbacService.getUserAccessibleResourcesPaginated(userId, page, limit);
+    res.json(result);
+  } catch (error) {
+    console.error('Error fetching resources:', error);
+    res.status(500).json({ message: 'Failed to fetch resources' });
+  }
+};

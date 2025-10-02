@@ -356,6 +356,40 @@ paths:
         '403':
           description: Forbidden - insufficient permissions
 
+  /users/v2:
+    get:
+      tags: [Users]
+      summary: Get all users (paginated)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Page number
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+          description: Number of items per page
+      responses:
+        '200':
+          description: Paginated list of users retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedUsersResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - insufficient permissions
+
   /users/{id}:
     get:
       tags: [Users]
@@ -603,6 +637,41 @@ paths:
                 $ref: '#/components/schemas/Resource'
         '400':
           description: Bad request - validation error
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - insufficient permissions
+
+  /resources/v2:
+    get:
+      tags: [Resources]
+      summary: Get resources accessible to the authenticated user (paginated)
+      description: Retrieve paginated resources that the authenticated user has access to based on their assigned roles and permissions. Super admins see all resources, while regular users only see resources they have been granted access to.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Page number
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+          description: Number of items per page
+      responses:
+        '200':
+          description: Paginated list of accessible resources retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResourcesResponse'
         '401':
           description: Unauthorized
         '403':
@@ -1579,6 +1648,66 @@ components:
         reason:
           type: string
           description: Reason for permission grant (only present for super admins)
+
+    # Pagination schemas
+    PaginationQuery:
+      type: object
+      properties:
+        page:
+          type: integer
+          minimum: 1
+          default: 1
+          description: Page number
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 10
+          description: Number of items per page
+
+    PaginationMeta:
+      type: object
+      properties:
+        page:
+          type: integer
+          description: Current page number
+        limit:
+          type: integer
+          description: Number of items per page
+        total:
+          type: integer
+          description: Total number of items
+        totalPages:
+          type: integer
+          description: Total number of pages
+        hasNext:
+          type: boolean
+          description: Whether there is a next page
+        hasPrev:
+          type: boolean
+          description: Whether there is a previous page
+
+    PaginatedUsersResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+          description: Array of users
+        pagination:
+          $ref: '#/components/schemas/PaginationMeta'
+
+    PaginatedResourcesResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Resource'
+          description: Array of resources
+        pagination:
+          $ref: '#/components/schemas/PaginationMeta'
 
     # Authentication schemas
     RegisterRequest:

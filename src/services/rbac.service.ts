@@ -189,7 +189,7 @@ export const getUserAccessibleResources = async (userId: string): Promise<any[]>
  * Get the role of a user for a specific resource
  */
 export const getUserRoleForResource = async (userId: string, resourceId: string): Promise<any> => {
-  // If user is super admin, they have full access (could return a special role or null)
+  // If user is super admin, they have implicit full access, but we'll return null to indicate no specific role
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { isSuperAdmin: true }
@@ -227,4 +227,104 @@ export const getUserRoleForResource = async (userId: string, resourceId: string)
   }
 
   return userResourceRole;
+};
+
+/**
+ * Get resources that a user has access to based on their roles (paginated)
+ */
+export const getUserAccessibleResourcesPaginated = async (userId: string, page: number = 1, limit: number = 10): Promise<any> => {
+  const skip = (page - 1) * limit;
+
+  // If user is super admin, return all resources paginated
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { isSuperAdmin: true }
+  });
+
+  if (user?.isSuperAdmin) {
+    const [resources, total] = await Promise.all([
+      prisma.resource.findMany({
+        include: {
+          userRoles: {
+            include: {
+              role: true,
+              user: true,
+            },
+          },
+        },
+        skip,
+        take: limit,
+        orderBy: {
+          createdAt: 'desc',
+        },
+      }),
+      prisma.resource.count(),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data: resources,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1,
+      },
+    };
+  }
+
+  // Get resources where user has UserResourceRole entries (either specific or global) - paginated
+  const [userResources, total] = await Promise.all([
+    prisma.resource.findMany({
+      where: {
+        userRoles: {
+          some: {
+            userId: userId,
+          },
+        },
+      },
+      include: {
+        userRoles: {
+          include: {
+            role: true,
+            user: true,
+          },
+          where: {
+            userId: userId,
+          },
+        },
+      },
+      skip,
+      take: limit,
+      orderBy: {
+        createdAt: 'desc',
+      },
+    }),
+    prisma.resource.count({
+      where: {
+        userRoles: {
+          some: {
+            userId: userId,
+          },
+        },
+      },
+    }),
+  ]);
+
+  const totalPages = Math.ceil(total / limit);
+
+  return {
+    data: userResources,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages,
+      hasNext: page < totalPages,
+      hasPrev: page > 1,
+    },
+  };
 };

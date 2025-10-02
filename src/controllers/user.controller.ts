@@ -97,3 +97,14 @@ export const deleteUser = async (req: Request, res: Response) => {
     handleUnknownError(error, res, 500);
   }
 };
+
+export const listUsersV2 = async (req: Request, res: Response) => {
+  try {
+    const page = parseInt(req.query.page as string, 10) || 1;
+    const limit = parseInt(req.query.limit as string, 10) || 10;
+    const result = await userService.listUsersPaginated(page, limit);
+    res.json(result);
+  } catch (error) {
+    handleUnknownError(error, res, 500);
+  }
+};

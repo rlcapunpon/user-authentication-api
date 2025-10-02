@@ -9,13 +9,14 @@ import { Router } from 'express';
 import { authGuard } from '../middleware/auth.middleware';
 import { rbacGuard, authorizeResource } from '../middleware/rbac.middleware';
 import { validate } from '../middleware/validate';
-import { getResources, createResource, createRole, getUserRoleForResource } from '../controllers/rbac.controller';
+import { getResources, createResource, createRole, getUserRoleForResource, getResourcesV2 } from '../controllers/rbac.controller';
 import { assignUserResourceRole, revokeUserResourceRole } from '../controllers/user.controller';
 import { 
   createResourceSchema,
   createRoleSchema,
   assignUserResourceRoleSchema,
-  revokeUserResourceRoleSchema
+  revokeUserResourceRoleSchema,
+  paginationQuerySchema
 } from '../schemas/resource.schema';
 
 const router = Router();
@@ -37,6 +38,40 @@ const router = Router();
  *         description: Forbidden
  */
 router.get('/', authGuard, getResources);
+
+/**
+ * @swagger
+ * /resources/v2:
+ *   get:
+ *     summary: Get resources accessible to the authenticated user (paginated)
+ *     tags: [Resources]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 10
+ *         description: Number of items per page
+ *     responses:
+ *       200:
+ *         description: List of accessible resources retrieved successfully (paginated)
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
+router.get('/v2', authGuard, validate(paginationQuerySchema), getResourcesV2);
 
 /**
  * @swagger

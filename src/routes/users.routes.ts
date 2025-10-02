@@ -1,9 +1,9 @@
 import { Router } from 'express';
-import { listUsers, getUser, createUser, updateUserSuperAdmin, assignUserResourceRole, revokeUserResourceRole, deactivateUser, deleteUser } from '../controllers/user.controller';
+import { listUsers, getUser, createUser, updateUserSuperAdmin, assignUserResourceRole, revokeUserResourceRole, deactivateUser, deleteUser, listUsersV2 } from '../controllers/user.controller';
 import { authGuard } from '../middleware/auth.middleware';
 import { rbacGuard, requireSuperAdmin } from '../middleware/rbac.middleware';
 import { validate } from '../middleware/validate';
-import { createUserSchema, updateUserSuperAdminSchema, userIdSchema } from '../schemas/user.schema';
+import { createUserSchema, updateUserSuperAdminSchema, userIdSchema, paginationQuerySchema } from '../schemas/user.schema';
 import { assignUserResourceRoleSchema, revokeUserResourceRoleSchema } from '../schemas/resource.schema';
 
 const router = Router();
@@ -34,6 +34,40 @@ router.use(authGuard);
  *         description: Forbidden
  */
 router.get('/', rbacGuard(['user:read']), listUsers);
+
+/**
+ * @swagger
+ * /users/v2:
+ *   get:
+ *     summary: Get all users (paginated)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 10
+ *         description: Number of items per page
+ *     responses:
+ *       200:
+ *         description: A paginated list of users.
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
+router.get('/v2', rbacGuard(['user:read']), validate(paginationQuerySchema), listUsersV2);
 
 /**
  * @swagger

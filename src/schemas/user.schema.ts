@@ -93,3 +93,23 @@ export const userDetailsIdSchema = z.object({
     id: z.string().uuid('Invalid user ID format'),
   }),
 });
+
+// Pagination schemas
+export const paginationQuerySchema = z.object({
+  query: z.object({
+    page: z.string().transform(val => parseInt(val, 10)).refine(val => val > 0, 'Page must be greater than 0').optional().default(1),
+    limit: z.string().transform(val => parseInt(val, 10)).refine(val => val > 0 && val <= 100, 'Limit must be between 1 and 100').optional().default(10),
+  }),
+});
+
+export const paginatedUsersResponseSchema = z.object({
+  data: z.array(z.any()), // Will be properly typed with User schema
+  pagination: z.object({
+    page: z.number(),
+    limit: z.number(),
+    total: z.number(),
+    totalPages: z.number(),
+    hasNext: z.boolean(),
+    hasPrev: z.boolean(),
+  }),
+});

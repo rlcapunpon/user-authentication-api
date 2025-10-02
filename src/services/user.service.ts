@@ -226,3 +226,35 @@ export const updateUserProfile = async (userId: string, email?: string, oldPassw
   }
   return user; // No changes if no email or password provided
 };
+
+export const listUsersPaginated = async (page: number = 1, limit: number = 10) => {
+  const skip = (page - 1) * limit;
+
+  const [users, total] = await Promise.all([
+    (prisma as any).user.findMany({
+      include: {
+        resourceRoles: true,
+      },
+      skip,
+      take: limit,
+      orderBy: {
+        createdAt: 'desc',
+      },
+    }),
+    (prisma as any).user.count(),
+  ]);
+
+  const totalPages = Math.ceil(total / limit);
+
+  return {
+    data: users,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages,
+      hasNext: page < totalPages,
+      hasPrev: page > 1,
+    },
+  };
+};
