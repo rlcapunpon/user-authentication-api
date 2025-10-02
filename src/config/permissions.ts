@@ -241,7 +241,8 @@ export const ROLE_PERMISSIONS = {
   ],
   
   APPROVER: [
-    // Resource access - assigned only
+    // Resource access - assigned only + read permission
+    PERMISSIONS.RESOURCE_READ,
     PERMISSIONS.RESOURCE_ACCESS_ASSIGNED,
     
     // User Management - limited (team only)
@@ -286,7 +287,8 @@ export const ROLE_PERMISSIONS = {
   ],
   
   STAFF: [
-    // Resource access - assigned only
+    // Resource access - assigned only + read permission
+    PERMISSIONS.RESOURCE_READ,
     PERMISSIONS.RESOURCE_ACCESS_ASSIGNED,
     
     // User Management - limited
@@ -343,7 +345,8 @@ export const ROLE_PERMISSIONS = {
   ],
   
   CLIENT: [
-    // Resource access - own only
+    // Resource access - own only + read permission
+    PERMISSIONS.RESOURCE_READ,
     PERMISSIONS.RESOURCE_ACCESS_OWN,
     
     // Transaction Management - encode draft only

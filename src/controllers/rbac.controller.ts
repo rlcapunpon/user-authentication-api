@@ -25,16 +25,31 @@ export const getRoles = async (req: Request, res: Response) => {
  */
 export const getResources = async (req: Request, res: Response) => {
   try {
+    console.log('🔍 DEBUG: GET /resources request received');
+    console.log('   Method:', req.method);
+    console.log('   URL:', req.url);
+    console.log('   Query params:', req.query);
+    console.log('   Headers:', {
+      authorization: req.headers.authorization ? '[PRESENT]' : '[MISSING]',
+      'user-agent': req.headers['user-agent'],
+      'content-type': req.headers['content-type']
+    });
+    console.log('   User from token:', req.user);
+
     const userId = req.user?.userId;
     if (!userId) {
+      console.log('❌ DEBUG: No userId found in token');
       return res.status(401).json({ message: 'User not authenticated' });
     }
 
+    console.log('✅ DEBUG: Proceeding with userId:', userId);
     const resources = await rbacService.getUserAccessibleResources(userId);
+    console.log('📊 DEBUG: Resources fetched:', resources?.length || 0, 'items');
+
     res.json(resources);
   } catch (error) {
     // Log the error for debugging purposes (optional, depending on logging setup)
-    console.error('Error fetching resources:', error);
+    console.error('❌ DEBUG: Error fetching resources:', error);
     res.status(500).json({ message: 'Failed to fetch resources' });
   }
 };
@@ -46,8 +61,8 @@ export const getResources = async (req: Request, res: Response) => {
  */
 export const createResource = async (req: Request, res: Response) => {
   try {
-    const { name, description } = req.body;
-    const resource = await rbacService.createResource(name, description);
+    const { name, description, id } = req.body;
+    const resource = await rbacService.createResource(name, description, id);
     res.status(201).json(resource);
   } catch (error) {
     console.error('Error creating resource:', error);
@@ -161,27 +176,51 @@ export const getUserRoleForResource = async (req: Request, res: Response) => {
 };
 
 /**
- * Handles the request to get accessible resources for the authenticated user (paginated v2)
+ * Handles the request to get resources with pagination and filtering.
  * @param req - The Express request object.
  * @param res - The Express response object.
  */
 export const getResourcesV2 = async (req: Request, res: Response) => {
   try {
+    console.log('🔍 DEBUG: GET /resources/v2 request received');
+    console.log('   Method:', req.method);
+    console.log('   URL:', req.url);
+    console.log('   Query params:', req.query);
+    console.log('   Headers:', {
+      authorization: req.headers.authorization ? '[PRESENT]' : '[MISSING]',
+      'user-agent': req.headers['user-agent'],
+      'content-type': req.headers['content-type']
+    });
+    console.log('   User from token:', req.user);
+
     const userId = req.user?.userId;
     if (!userId) {
+      console.log('❌ DEBUG: No userId found in token');
       return res.status(401).json({ message: 'User not authenticated' });
     }
 
-    const page = parseInt(req.query.page as string, 10) || 1;
-    const limit = parseInt(req.query.limit as string, 10) || 10;
-    const resourceName = req.query.resourceName as string | undefined;
-    const resourceId = req.query.resourceId as string | undefined;
-    const q = req.query.q as string | undefined;
+    console.log('✅ DEBUG: Proceeding with userId:', userId);
 
-    const result = await rbacService.getUserAccessibleResourcesPaginated(userId, page, limit, resourceName, resourceId, q);
+    const { page = 1, limit = 10, resourceName, resourceId, q } = req.query;
+    console.log('📋 DEBUG: Filter params - page:', page, 'limit:', limit, 'resourceName:', resourceName, 'resourceId:', resourceId, 'q:', q);
+
+    const pageNum = parseInt(page as string, 10);
+    const limitNum = parseInt(limit as string, 10);
+
+    const result = await rbacService.getUserAccessibleResourcesPaginated(
+      userId,
+      pageNum,
+      limitNum,
+      resourceName as string,
+      resourceId as string,
+      q as string
+    );
+
+    console.log('📊 DEBUG: Resources fetched:', result.data?.length || 0, 'items, total:', result.pagination.total, 'pages:', result.pagination.totalPages);
+
     res.json(result);
   } catch (error) {
-    console.error('Error fetching resources:', error);
+    console.error('❌ DEBUG: Error fetching resources v2:', error);
     res.status(500).json({ message: 'Failed to fetch resources' });
   }
 };

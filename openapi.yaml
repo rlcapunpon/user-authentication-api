@@ -1550,6 +1550,9 @@ components:
         description:
           type: string
           description: Optional resource description
+        id:
+          type: string
+          description: Optional custom resource ID. If not provided, an auto-generated ID will be used.
 
     ResourceRole:
       type: object

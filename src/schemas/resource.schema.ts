@@ -4,6 +4,7 @@ export const createResourceSchema = z.object({
   body: z.object({
     name: z.string().min(1, 'Resource name is required'),
     description: z.string().optional(),
+    id: z.string().optional(), // Allow custom resource ID
   }),
 });
 

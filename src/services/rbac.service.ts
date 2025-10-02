@@ -62,9 +62,10 @@ export const getAllResources = () => {
   });
 };
 
-export const createResource = (name: string, description?: string) => {
+export const createResource = (name: string, description?: string, id?: string) => {
   return prisma.resource.create({
     data: {
+      ...(id && { id }),
       name,
       description,
     },

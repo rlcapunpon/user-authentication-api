@@ -215,4 +215,135 @@ describe('RBAC Service', () => {
       expect(result.pagination.total).toBe(0);
     });
   });
+
+  describe('getUserResourcesAndRoles', () => {
+    let testUserId: string;
+    let resource1Id: string;
+    let resource2Id: string;
+
+    beforeEach(async () => {
+      // Create test user
+      const testUser = await (prisma as any).user.create({
+        data: { email: 'test-user-roles@example.com', isActive: true, isSuperAdmin: false },
+      });
+      testUserId = testUser.id;
+
+      // Create resources
+      const resource1 = await (prisma as any).resource.create({
+        data: { name: 'Resource 1', description: 'First resource' },
+      });
+      resource1Id = resource1.id;
+
+      const resource2 = await (prisma as any).resource.create({
+        data: { name: 'Resource 2', description: 'Second resource' },
+      });
+      resource2Id = resource2.id;
+
+      // Create roles
+      const role1 = await (prisma as any).role.create({
+        data: { name: 'Role 1', permissions: ['read'] },
+      });
+
+      const role2 = await (prisma as any).role.create({
+        data: { name: 'Role 2', permissions: ['write'] },
+      });
+
+      // Assign roles to test user for specific resources
+      await (prisma as any).userResourceRole.create({
+        data: { userId: testUserId, roleId: role1.id, resourceId: resource1Id },
+      });
+
+      await (prisma as any).userResourceRole.create({
+        data: { userId: testUserId, roleId: role2.id, resourceId: resource2Id },
+      });
+    });
+
+    it('should return resources and roles for a user', async () => {
+      const result = await rbacService.getUserResourcesAndRoles(testUserId);
+
+      expect(result).toHaveProperty('resources');
+      expect(Array.isArray(result.resources)).toBe(true);
+      expect(result.resources).toHaveLength(2);
+
+      // Check structure of each resource
+      result.resources.forEach((resource: any) => {
+        expect(resource).toHaveProperty('resourceId');
+        expect(resource).toHaveProperty('resourceName');
+        expect(resource).toHaveProperty('roleName');
+        expect(resource).toHaveProperty('roleId');
+      });
+
+      // Verify specific resources and roles
+      const resourceNames = result.resources.map((r: any) => r.resourceName);
+      expect(resourceNames).toContain('Resource 1');
+      expect(resourceNames).toContain('Resource 2');
+    });
+
+    it('should return empty array for user with no resource roles', async () => {
+      const noRoleUser = await (prisma as any).user.create({
+        data: { email: 'no-roles@example.com', isActive: true, isSuperAdmin: false },
+      });
+
+      const result = await rbacService.getUserResourcesAndRoles(noRoleUser.id);
+
+      expect(result).toHaveProperty('resources');
+      expect(Array.isArray(result.resources)).toBe(true);
+      expect(result.resources).toHaveLength(0);
+    });
+  });
+
+  describe('createResource', () => {
+    it('should create a resource with auto-generated id when no id provided', async () => {
+      const result = await rbacService.createResource('Test Resource', 'Test Description');
+
+      expect(result).toHaveProperty('id');
+      expect(result.name).toBe('Test Resource');
+      expect(result.description).toBe('Test Description');
+      expect(result).toHaveProperty('createdAt');
+      expect(result).toHaveProperty('updatedAt');
+
+      // Verify it was created in database
+      const createdResource = await (prisma as any).resource.findUnique({
+        where: { id: result.id },
+      });
+      expect(createdResource).toBeTruthy();
+      expect(createdResource.name).toBe('Test Resource');
+    });
+
+    it('should create a resource with provided id when id is specified', async () => {
+      const customId = 'custom-resource-id-123';
+
+      const result = await rbacService.createResource('Custom ID Resource', 'With custom ID', customId);
+
+      expect(result.id).toBe(customId);
+      expect(result.name).toBe('Custom ID Resource');
+      expect(result.description).toBe('With custom ID');
+
+      // Verify it was created in database with the custom ID
+      const createdResource = await (prisma as any).resource.findUnique({
+        where: { id: customId },
+      });
+      expect(createdResource).toBeTruthy();
+      expect(createdResource.id).toBe(customId);
+      expect(createdResource.name).toBe('Custom ID Resource');
+    });
+
+    it('should create a resource without description', async () => {
+      const result = await rbacService.createResource('No Description Resource');
+
+      expect(result).toHaveProperty('id');
+      expect(result.name).toBe('No Description Resource');
+      expect(result.description).toBeNull();
+    });
+
+    it('should create a resource with custom id and no description', async () => {
+      const customId = 'custom-no-desc-456';
+
+      const result = await rbacService.createResource('Custom No Desc', undefined, customId);
+
+      expect(result.id).toBe(customId);
+      expect(result.name).toBe('Custom No Desc');
+      expect(result.description).toBeNull();
+    });
+  });
 });

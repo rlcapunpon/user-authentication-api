@@ -529,4 +529,172 @@ describe('Resources Endpoints', () => {
       expect(response.status).toBe(401);
     });
   });
+
+  describe('POST /api/resources', () => {
+    it('should create a new resource with auto-generated ID when no id provided', async () => {
+      const newResource = {
+        name: 'New Test Resource',
+        description: 'A resource created for testing',
+      };
+
+      const response = await request(app)
+        .post('/api/resources')
+        .set('Authorization', `Bearer ${adminUserToken}`)
+        .send(newResource);
+
+      expect(response.status).toBe(201);
+      expect(response.body).toHaveProperty('id');
+      expect(response.body.name).toBe(newResource.name);
+      expect(response.body.description).toBe(newResource.description);
+
+      // Verify the resource was created in the database
+      const createdResource = await (prisma as any).resource.findUnique({
+        where: { id: response.body.id },
+      });
+      expect(createdResource).toBeTruthy();
+      expect(createdResource.name).toBe(newResource.name);
+      expect(createdResource.description).toBe(newResource.description);
+    });
+
+    it('should create a new resource with custom ID when id is provided', async () => {
+      const customId = 'custom-resource-id-123';
+      const newResource = {
+        id: customId,
+        name: 'Custom ID Resource',
+        description: 'A resource with a custom ID',
+      };
+
+      const response = await request(app)
+        .post('/api/resources')
+        .set('Authorization', `Bearer ${adminUserToken}`)
+        .send(newResource);
+
+      expect(response.status).toBe(201);
+      expect(response.body.id).toBe(customId);
+      expect(response.body.name).toBe(newResource.name);
+      expect(response.body.description).toBe(newResource.description);
+
+      // Verify the resource was created with the custom ID
+      const createdResource = await (prisma as any).resource.findUnique({
+        where: { id: customId },
+      });
+      expect(createdResource).toBeTruthy();
+      expect(createdResource.id).toBe(customId);
+      expect(createdResource.name).toBe(newResource.name);
+      expect(createdResource.description).toBe(newResource.description);
+    });
+
+    it('should create a resource with only required fields (name)', async () => {
+      const newResource = {
+        name: 'Minimal Resource',
+      };
+
+      const response = await request(app)
+        .post('/api/resources')
+        .set('Authorization', `Bearer ${adminUserToken}`)
+        .send(newResource);
+
+      expect(response.status).toBe(201);
+      expect(response.body).toHaveProperty('id');
+      expect(response.body.name).toBe(newResource.name);
+      expect(response.body.description).toBeNull();
+
+      // Verify the resource was created
+      const createdResource = await (prisma as any).resource.findUnique({
+        where: { id: response.body.id },
+      });
+      expect(createdResource).toBeTruthy();
+      expect(createdResource.name).toBe(newResource.name);
+      expect(createdResource.description).toBeNull();
+    });
+
+    it('should fail when creating resource with duplicate custom ID', async () => {
+      const customId = 'duplicate-custom-id';
+      const firstResource = {
+        id: customId,
+        name: 'First Resource',
+        description: 'First resource with custom ID',
+      };
+
+      // Create first resource
+      const firstResponse = await request(app)
+        .post('/api/resources')
+        .set('Authorization', `Bearer ${adminUserToken}`)
+        .send(firstResource);
+
+      expect(firstResponse.status).toBe(201);
+
+      // Try to create second resource with same ID
+      const secondResource = {
+        id: customId,
+        name: 'Second Resource',
+        description: 'Second resource with same custom ID',
+      };
+
+      const secondResponse = await request(app)
+        .post('/api/resources')
+        .set('Authorization', `Bearer ${adminUserToken}`)
+        .send(secondResource);
+
+      expect(secondResponse.status).toBe(500); // Prisma unique constraint violation
+    });
+
+    it('should fail without required name field', async () => {
+      const invalidResource = {
+        description: 'Resource without name',
+      };
+
+      const response = await request(app)
+        .post('/api/resources')
+        .set('Authorization', `Bearer ${adminUserToken}`)
+        .send(invalidResource);
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toContain('name is required');
+    });
+
+    it('should fail without authentication', async () => {
+      const newResource = {
+        name: 'Unauthenticated Resource',
+        description: 'Should not be created',
+      };
+
+      const response = await request(app)
+        .post('/api/resources')
+        .send(newResource);
+
+      expect(response.status).toBe(401);
+      expect(response.body.message).toBe('No token provided');
+    });
+
+    it('should fail with invalid token', async () => {
+      const newResource = {
+        name: 'Invalid Token Resource',
+        description: 'Should not be created',
+      };
+
+      const response = await request(app)
+        .post('/api/resources')
+        .set('Authorization', 'Bearer invalid-token')
+        .send(newResource);
+
+      expect(response.status).toBe(401);
+      expect(response.body.message).toBe('Invalid token');
+    });
+
+    it('should fail for regular user without resource:create permission', async () => {
+      const newResource = {
+        name: 'Forbidden Resource',
+        description: 'Should not be created by regular user',
+      };
+
+      const response = await request(app)
+        .post('/api/resources')
+        .set('Authorization', `Bearer ${testUserToken}`)
+        .send(newResource);
+
+      expect(response.status).toBe(403);
+      expect(response.body.message).toContain('Insufficient permissions');
+    });
+  });
 });
