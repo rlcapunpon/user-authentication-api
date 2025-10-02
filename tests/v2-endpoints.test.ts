@@ -324,6 +324,60 @@ describe('V2 Endpoints', () => {
       expect(response.status).toBe(400);
     });
 
+    it('should filter resources by name using q parameter', async () => {
+      const response = await request(app)
+        .get('/api/resources/v2?q=Resource%201')
+        .set('Authorization', `Bearer ${adminUserToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.length).toBe(1);
+      expect(response.body.data[0].name).toBe('Resource 1');
+    });
+
+    it('should filter resources by partial name match using q parameter (case insensitive)', async () => {
+      const response = await request(app)
+        .get('/api/resources/v2?q=resource')
+        .set('Authorization', `Bearer ${adminUserToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.length).toBe(3); // All resources contain "resource"
+    });
+
+    it('should filter resources by ID using q parameter', async () => {
+      const response = await request(app)
+        .get(`/api/resources/v2?q=${resource1Id}`)
+        .set('Authorization', `Bearer ${adminUserToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.length).toBe(1);
+      expect(response.body.data[0].id).toBe(resource1Id);
+    });
+
+    it('should filter resources by partial ID match using q parameter', async () => {
+      // Get first few characters of resource1Id for partial match
+      const partialId = resource1Id.substring(0, 4);
+      const response = await request(app)
+        .get(`/api/resources/v2?q=${partialId}`)
+        .set('Authorization', `Bearer ${adminUserToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.length).toBeGreaterThan(0);
+      // Verify that all returned resources have IDs containing the partial ID
+      response.body.data.forEach((resource: any) => {
+        expect(resource.id.toLowerCase()).toContain(partialId.toLowerCase());
+      });
+    });
+
+    it('should return empty array when q parameter matches nothing', async () => {
+      const response = await request(app)
+        .get('/api/resources/v2?q=nonexistent')
+        .set('Authorization', `Bearer ${adminUserToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.length).toBe(0);
+      expect(response.body.pagination.total).toBe(0);
+    });
+
     it('should fail without authentication', async () => {
       const response = await request(app)
         .get('/api/resources/v2');

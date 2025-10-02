@@ -12,7 +12,8 @@
     "format": "prettier --write .",
     "migrate": "prisma migrate dev",
     "seed": "prisma db seed",
-    "seed:permissions": "ts-node prisma/seed-permissions.ts"
+    "seed:permissions": "ts-node prisma/seed-permissions.ts",
+    "seed:all": "prisma db seed && ts-node prisma/seed-permissions.ts"
   },
   "keywords": [],
   "author": "",

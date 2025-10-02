@@ -232,10 +232,51 @@ export const getUserRoleForResource = async (userId: string, resourceId: string)
 /**
  * Get resources that a user has access to based on their roles (paginated)
  */
-export const getUserAccessibleResourcesPaginated = async (userId: string, page: number = 1, limit: number = 10): Promise<any> => {
+export const getUserAccessibleResourcesPaginated = async (
+  userId: string,
+  page: number = 1,
+  limit: number = 10,
+  resourceName?: string,
+  resourceId?: string,
+  q?: string
+): Promise<any> => {
   const skip = (page - 1) * limit;
 
-  // If user is super admin, return all resources paginated
+  // Build where clause for filtering
+  const where: any = {};
+
+  // Filter by resource name (case-insensitive partial match)
+  if (resourceName) {
+    where.name = {
+      contains: resourceName,
+      mode: 'insensitive',
+    };
+  }
+
+  // Filter by exact resource ID
+  if (resourceId) {
+    where.id = resourceId;
+  }
+
+  // Filter by general search query (searches in both name and ID)
+  if (q) {
+    where.OR = [
+      {
+        name: {
+          contains: q,
+          mode: 'insensitive',
+        },
+      },
+      {
+        id: {
+          contains: q,
+          mode: 'insensitive',
+        },
+      },
+    ];
+  }
+
+  // If user is super admin, return all resources paginated with filters
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { isSuperAdmin: true }
@@ -244,21 +285,14 @@ export const getUserAccessibleResourcesPaginated = async (userId: string, page: 
   if (user?.isSuperAdmin) {
     const [resources, total] = await Promise.all([
       prisma.resource.findMany({
-        include: {
-          userRoles: {
-            include: {
-              role: true,
-              user: true,
-            },
-          },
-        },
+        where,
         skip,
         take: limit,
         orderBy: {
           createdAt: 'desc',
         },
       }),
-      prisma.resource.count(),
+      prisma.resource.count({ where }),
     ]);
 
     const totalPages = Math.ceil(total / limit);
@@ -276,23 +310,13 @@ export const getUserAccessibleResourcesPaginated = async (userId: string, page: 
     };
   }
 
-  // Get resources where user has UserResourceRole entries (either specific or global) - paginated
+  // Get resources where user has UserResourceRole entries (either specific or global) - paginated with filters
   const [userResources, total] = await Promise.all([
     prisma.resource.findMany({
       where: {
+        ...where,
         userRoles: {
           some: {
-            userId: userId,
-          },
-        },
-      },
-      include: {
-        userRoles: {
-          include: {
-            role: true,
-            user: true,
-          },
-          where: {
             userId: userId,
           },
         },
@@ -305,6 +329,7 @@ export const getUserAccessibleResourcesPaginated = async (userId: string, page: 
     }),
     prisma.resource.count({
       where: {
+        ...where,
         userRoles: {
           some: {
             userId: userId,
@@ -327,4 +352,36 @@ export const getUserAccessibleResourcesPaginated = async (userId: string, page: 
       hasPrev: page > 1,
     },
   };
+};
+
+/**
+ * Get all resources and roles assigned to a specific user
+ */
+export const getUserResourcesAndRoles = async (userId: string): Promise<{ resources: Array<{ resourceId: string; resourceName: string; roleName: string; roleId: string }> }> => {
+  // Get all user resource roles for this user (excluding global roles where resourceId is null)
+  const userResourceRoles = await prisma.userResourceRole.findMany({
+    where: {
+      userId: userId,
+      resourceId: {
+        not: null, // Exclude global roles
+      },
+    },
+    include: {
+      role: true,
+      resource: true,
+    },
+  });
+
+  // Transform the data to match the required response format
+  // Filter out any entries where resource might be null (though it shouldn't be due to the query)
+  const resources = userResourceRoles
+    .filter(userResourceRole => userResourceRole.resource !== null)
+    .map(userResourceRole => ({
+      resourceId: userResourceRole.resourceId!, // We know this is not null due to the filter
+      resourceName: userResourceRole.resource!.name,
+      roleName: userResourceRole.role.name,
+      roleId: userResourceRole.roleId,
+    }));
+
+  return { resources };
 };

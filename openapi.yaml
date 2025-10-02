@@ -700,6 +700,21 @@ paths:
             maximum: 100
             default: 10
           description: Number of items per page
+        - name: resourceName
+          in: query
+          schema:
+            type: string
+          description: Filter resources by name (case-insensitive partial match)
+        - name: resourceId
+          in: query
+          schema:
+            type: string
+          description: Filter resources by exact resource ID
+        - name: q
+          in: query
+          schema:
+            type: string
+          description: General search query that filters resources by name or ID (case-insensitive partial match)
       responses:
         '200':
           description: Paginated list of accessible resources retrieved successfully
@@ -891,6 +906,53 @@ paths:
                 $ref: '#/components/schemas/Error'
         '404':
           description: User has no role for this resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /resources/{userId}:
+    get:
+      tags: [Resources]
+      summary: Get all resources and roles assigned to a specific user
+      description: Retrieve all resources and their corresponding roles assigned to a user. Super admins can access any user's data, while regular users can only access their own data. Returns resource-specific roles only (excludes global roles).
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The unique identifier of the user
+      responses:
+        '200':
+          description: User resources and roles retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  resources:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UserResourceRoleAssignment'
+                    description: Array of resource-role assignments for the user
+        '401':
+          description: Unauthorized - authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - regular users can only access their own data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User not found
           content:
             application/json:
               schema:
@@ -1645,6 +1707,26 @@ components:
           enum: [resource-specific, global]
           description: Whether this is a resource-specific role or a global role fallback
           example: "resource-specific"
+
+    UserResourceRoleAssignment:
+      type: object
+      properties:
+        resourceId:
+          type: string
+          description: The unique identifier of the resource
+          example: "resource_123"
+        resourceName:
+          type: string
+          description: The name of the resource
+          example: "Organization A"
+        roleName:
+          type: string
+          description: The name of the role assigned to the user for this resource
+          example: "editor"
+        roleId:
+          type: string
+          description: The unique identifier of the role
+          example: "role_456"
 
     CheckUserPermissionRequest:
       type: object

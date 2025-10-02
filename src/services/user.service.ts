@@ -84,11 +84,8 @@ export const getUserById = (id: string) => {
     include: {
       resourceRoles: {
         include: {
-          role: {
-            include: {
-              resource: true,
-            },
-          },
+          role: true,
+          resource: true,
         },
       },
     },
@@ -122,11 +119,8 @@ export const assignUserResourceRole = async (userId: string, roleId: string, res
     },
     include: {
       user: true,
-      role: {
-        include: {
-          resource: true,
-        },
-      },
+      role: true,
+      resource: true,
     },
   });
 };

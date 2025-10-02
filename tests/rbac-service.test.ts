@@ -148,15 +148,71 @@ describe('RBAC Service', () => {
       });
     });
 
-    it('should include user roles in the response', async () => {
+    it('should return resources without user roles in the response', async () => {
       const result = await rbacService.getUserAccessibleResourcesPaginated(testUserId);
 
       expect(result.data).toHaveLength(2);
       result.data.forEach((resource: any) => {
-        expect(resource).toHaveProperty('userRoles');
-        expect(Array.isArray(resource.userRoles)).toBe(true);
-        expect(resource.userRoles.length).toBeGreaterThan(0);
+        expect(resource).toHaveProperty('id');
+        expect(resource).toHaveProperty('name');
+        expect(resource).toHaveProperty('description');
+        expect(resource).toHaveProperty('createdAt');
+        expect(resource).toHaveProperty('updatedAt');
+        expect(resource).not.toHaveProperty('userRoles');
       });
+    });
+
+    it('should filter resources by name (case-insensitive partial match) for super admin', async () => {
+      const result = await rbacService.getUserAccessibleResourcesPaginated(adminUserId, 1, 10, 'resource');
+
+      expect(result.data.length).toBeGreaterThan(0);
+      result.data.forEach((resource: any) => {
+        expect(resource.name.toLowerCase()).toContain('resource');
+      });
+    });
+
+    it('should filter resources by exact resource ID for super admin', async () => {
+      const result = await rbacService.getUserAccessibleResourcesPaginated(adminUserId, 1, 10, undefined, resource1Id);
+
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].id).toBe(resource1Id);
+    });
+
+    it('should filter resources by both name and ID for super admin', async () => {
+      const result = await rbacService.getUserAccessibleResourcesPaginated(adminUserId, 1, 10, 'Resource 1', resource1Id);
+
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].id).toBe(resource1Id);
+      expect(result.data[0].name).toBe('Resource 1');
+    });
+
+    it('should filter resources by name for regular user', async () => {
+      const result = await rbacService.getUserAccessibleResourcesPaginated(testUserId, 1, 10, 'Resource 1');
+
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].id).toBe(resource1Id);
+      expect(result.data[0].name).toBe('Resource 1');
+    });
+
+    it('should filter resources by exact resource ID for regular user', async () => {
+      const result = await rbacService.getUserAccessibleResourcesPaginated(testUserId, 1, 10, undefined, resource2Id);
+
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].id).toBe(resource2Id);
+    });
+
+    it('should return empty array when filtering by non-existent resource name', async () => {
+      const result = await rbacService.getUserAccessibleResourcesPaginated(adminUserId, 1, 10, 'nonexistent');
+
+      expect(result.data).toHaveLength(0);
+      expect(result.pagination.total).toBe(0);
+    });
+
+    it('should return empty array when filtering by non-existent resource ID', async () => {
+      const result = await rbacService.getUserAccessibleResourcesPaginated(adminUserId, 1, 10, undefined, 'nonexistent-id');
+
+      expect(result.data).toHaveLength(0);
+      expect(result.pagination.total).toBe(0);
     });
   });
 });

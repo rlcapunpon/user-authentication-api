@@ -221,3 +221,24 @@
 - **Technical Details**: FRONT_END_APP resource serves as the main resource for global role assignments, ensuring consistent resource-based role management
 
 **Status**: ✅ Complete - FRONT_END_APP resource seeding implemented and validated following strict TDD methodology.
+
+## Step 10-02-2025.STEP4 - User Resources and Roles Endpoint
+- **Test Implementation**: Created comprehensive test suite in `tests/resources-endpoints.test.ts` with 6 new failing tests for GET /resources/:userId endpoint (TDD approach)
+- **Service Layer**: Added `getUserResourcesAndRoles` function in `src/services/rbac.service.ts` that retrieves all resources and roles assigned to a specific user, excluding global roles
+- **Controller Implementation**: Added `getUserResourcesAndRoles` controller in `src/controllers/rbac.controller.ts` with proper authorization logic (super admins can access any user, regular users only their own data)
+- **Route Configuration**: Added GET /resources/:userId route with authentication guard and comprehensive Swagger documentation
+- **API Documentation**: Updated `openapi.yaml` with new endpoint documentation and response schemas
+- **Validation Results**: All 163 tests passing, endpoint properly handles authorization, returns formatted resource-role data, and includes proper error handling
+- **Technical Details**: Returns array of objects with resource details and associated role information; super admin access control enforced
+
+**Status**: ✅ Complete - GET /resources/:userId endpoint implemented and tested following strict TDD methodology.
+
+## Step 10-02-2025.STEP5 - Resource Filtering for GET /resources/v2
+- **Test Implementation**: Created comprehensive test suite in `tests/rbac-service.test.ts` and `tests/resources-endpoints.test.ts` with 16 new failing tests for resourceName and resourceId filtering (TDD approach)
+- **Service Layer**: Enhanced `getUserAccessibleResourcesPaginated` function in `src/services/rbac.service.ts` to support optional resourceName (case-insensitive partial match) and resourceId (exact match) filtering parameters
+- **Controller Implementation**: Updated `getResourcesV2` controller in `src/controllers/rbac.controller.ts` to parse resourceName and resourceId query parameters and pass them to the service function
+- **API Documentation**: Updated `openapi.yaml` with new query parameter documentation for resourceName and resourceId filters
+- **Validation Results**: All 179 tests passing, filtering works independently and combined, maintains proper authorization (super admins see all resources, regular users see only accessible ones), case-insensitive name matching implemented
+- **Technical Details**: Uses Prisma where clauses with contains/mode for name filtering, exact ID matching; filters work with pagination and maintain backward compatibility
+
+**Status**: ✅ Complete - GET /resources/v2 endpoint enhanced with resourceName and resourceId filtering following strict TDD methodology.

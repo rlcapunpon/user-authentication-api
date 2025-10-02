@@ -9,7 +9,7 @@ import { Router } from 'express';
 import { authGuard } from '../middleware/auth.middleware';
 import { rbacGuard, authorizeResource } from '../middleware/rbac.middleware';
 import { validate } from '../middleware/validate';
-import { getResources, createResource, createRole, getUserRoleForResource, getResourcesV2 } from '../controllers/rbac.controller';
+import { getResources, createResource, createRole, getUserRoleForResource, getResourcesV2, getUserResourcesAndRoles } from '../controllers/rbac.controller';
 import { assignUserResourceRole, revokeUserResourceRole } from '../controllers/user.controller';
 import { 
   createResourceSchema,
@@ -348,5 +348,57 @@ router.post(
  *         description: Internal server error
  */
 router.get('/:resourceId/user-role', authGuard, getUserRoleForResource);
+
+/**
+ * @swagger
+ * /resources/{userId}:
+ *   get:
+ *     summary: Get all resources and roles assigned to a specific user
+ *     description: Retrieve all resources and their corresponding roles assigned to a user. Super admins can access any user's data, while regular users can only access their own data.
+ *     tags: [Resources]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The unique identifier of the user
+ *     responses:
+ *       200:
+ *         description: User resources and roles retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 resources:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       resourceId:
+ *                         type: string
+ *                         description: The resource ID
+ *                       resourceName:
+ *                         type: string
+ *                         description: The resource name
+ *                       roleName:
+ *                         type: string
+ *                         description: The role name
+ *                       roleId:
+ *                         type: string
+ *                         description: The role ID
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - regular users can only access their own data
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/:userId', authGuard, getUserResourcesAndRoles);
 
 export default router;

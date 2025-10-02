@@ -174,10 +174,44 @@ export const getResourcesV2 = async (req: Request, res: Response) => {
 
     const page = parseInt(req.query.page as string, 10) || 1;
     const limit = parseInt(req.query.limit as string, 10) || 10;
-    const result = await rbacService.getUserAccessibleResourcesPaginated(userId, page, limit);
+    const resourceName = req.query.resourceName as string | undefined;
+    const resourceId = req.query.resourceId as string | undefined;
+    const q = req.query.q as string | undefined;
+
+    const result = await rbacService.getUserAccessibleResourcesPaginated(userId, page, limit, resourceName, resourceId, q);
     res.json(result);
   } catch (error) {
     console.error('Error fetching resources:', error);
     res.status(500).json({ message: 'Failed to fetch resources' });
+  }
+};
+
+/**
+ * Get all resources and roles assigned to a specific user
+ * Only super admins can access other users' data, regular users can only access their own
+ */
+export const getUserResourcesAndRoles = async (req: Request, res: Response) => {
+  try {
+    const { userId: requestedUserId } = req.params;
+    const authenticatedUserId = req.user!.userId;
+    const isSuperAdmin = req.user!.isSuperAdmin;
+
+    // Check authorization: user can only access their own data unless they're super admin
+    if (!isSuperAdmin && authenticatedUserId !== requestedUserId) {
+      return res.status(403).json({ message: 'Forbidden: You can only access your own resources and roles' });
+    }
+
+    // Check if the requested user exists
+    const user = await rbacService.findUserById(requestedUserId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const result = await rbacService.getUserResourcesAndRoles(requestedUserId);
+    res.json(result);
+
+  } catch (error) {
+    console.error('Error getting user resources and roles:', error);
+    res.status(500).json({ message: 'Failed to get user resources and roles' });
   }
 };
