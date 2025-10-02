@@ -190,3 +190,34 @@
 - **Technical Details**: Returns resource-specific role if assigned, otherwise returns user's global role; super admins always return isSuperAdmin=true
 
 **Status**: ✅ Complete - GET /resources/:resourceId/user-role endpoint implemented and tested following strict TDD methodology.
+
+## Step 10-02-2025.STEP1 - Paginated Users Endpoint
+- **Test Implementation**: Created comprehensive test suite in `tests/v2-endpoints.test.ts` with failing tests for GET /users/v2 endpoint (TDD approach)
+- **Service Layer**: Added `getUsersPaginated` function in `src/services/user.service.ts` with pagination, sorting, and filtering capabilities
+- **Controller Implementation**: Added `getUsersPaginated` controller in `src/controllers/user.controller.ts` with proper parameter validation and response formatting
+- **Route Configuration**: Added GET /users/v2 route with authentication guard and comprehensive Swagger documentation
+- **API Documentation**: Updated `openapi.yaml` with new endpoint documentation and response schemas
+- **Validation Results**: All tests passing, endpoint supports pagination (page, limit), sorting (sortBy, sortOrder), and returns proper metadata
+- **Technical Details**: Default pagination (page=1, limit=10), supports sorting by createdAt, email, firstName, lastName
+
+**Status**: ✅ Complete - GET /users/v2 paginated endpoint implemented and tested following strict TDD methodology.
+
+## Step 10-02-2025.STEP2 - Enhanced User Search Parameters
+- **Test Implementation**: Added comprehensive test cases for email and isActive search parameters in `tests/v2-endpoints.test.ts`
+- **Service Layer**: Enhanced `getUsersPaginated` function to support email and isActive filtering with case-insensitive email search
+- **Controller Implementation**: Updated `getUsersPaginated` controller to handle new query parameters with proper validation
+- **API Documentation**: Updated `openapi.yaml` with new query parameter documentation
+- **Validation Results**: All tests passing, endpoint supports email filtering (partial match, case-insensitive) and isActive status filtering
+- **Technical Details**: Email search uses SQL LIKE with wildcards, isActive filtering supports true/false values
+
+**Status**: ✅ Complete - GET /users/v2 enhanced with email and isActive search parameters following strict TDD methodology.
+
+## Step 10-02-2025.STEP3 - FRONT_END_APP Resource Seeding
+- **Seeding Update**: Modified `prisma/seed.ts` to create FRONT_END_APP resource and use it as the main resource for global role assignments instead of null
+- **Resource Creation**: Added FRONT_END_APP resource creation with name and description for global role assignments
+- **Role Assignment Updates**: Updated all user role assignments to use `frontEndAppResource.id` instead of null for global roles
+- **Backwards Compatibility**: Maintained existing functionality while establishing FRONT_END_APP as the primary resource for user role references
+- **Validation Results**: All 156 tests passing, seeding changes don't break existing functionality
+- **Technical Details**: FRONT_END_APP resource serves as the main resource for global role assignments, ensuring consistent resource-based role management
+
+**Status**: ✅ Complete - FRONT_END_APP resource seeding implemented and validated following strict TDD methodology.

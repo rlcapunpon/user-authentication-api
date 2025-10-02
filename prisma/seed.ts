@@ -76,6 +76,22 @@ async function main() {
     });
   }
 
+  // Create FRONT_END_APP resource for global role assignments
+  let frontEndAppResource = await (prisma as any).resource.findFirst({
+    where: {
+      name: 'WINDBOOKS_APP',
+    },
+  });
+
+  if (!frontEndAppResource) {
+    frontEndAppResource = await (prisma as any).resource.create({
+      data: {
+        name: 'WINDBOOKS_APP',
+        description: 'Main frontend application resource for global role assignments',
+      },
+    });
+  }
+
   // Create users for each role
   const superAdminUser = await (prisma as any).user.upsert({
     where: { email: 'superadmin@dvconsultingph.com' },
@@ -248,15 +264,15 @@ async function main() {
     },
   });
 
-  // Assign users to global roles
+  // Assign users to global roles (using FRONT_END_APP as the main resource)
   console.log('Assigning users to global roles...');
 
-  // Assign approver role to approver user (global)
+  // Assign approver role to approver user (using FRONT_END_APP resource)
   const existingApproverRole = await (prisma as any).userResourceRole.findFirst({
     where: {
       userId: approverUser.id,
       roleId: approverRole.id,
-      resourceId: null,
+      resourceId: frontEndAppResource.id,
     },
   });
 
@@ -265,17 +281,17 @@ async function main() {
       data: {
         userId: approverUser.id,
         roleId: approverRole.id,
-        resourceId: null,
+        resourceId: frontEndAppResource.id,
       },
     });
   }
 
-  // Assign staff role to staff user (global)
+  // Assign staff role to staff user (using FRONT_END_APP resource)
   const existingStaffRole = await (prisma as any).userResourceRole.findFirst({
     where: {
       userId: staffUser.id,
       roleId: staffRole.id,
-      resourceId: null,
+      resourceId: frontEndAppResource.id,
     },
   });
 
@@ -284,17 +300,17 @@ async function main() {
       data: {
         userId: staffUser.id,
         roleId: staffRole.id,
-        resourceId: null,
+        resourceId: frontEndAppResource.id,
       },
     });
   }
 
-  // Assign client role to client user (global)
+  // Assign client role to client user (using FRONT_END_APP resource)
   const existingClientRole = await (prisma as any).userResourceRole.findFirst({
     where: {
       userId: clientUser.id,
       roleId: clientRole.id,
-      resourceId: null,
+      resourceId: frontEndAppResource.id,
     },
   });
 
@@ -303,7 +319,7 @@ async function main() {
       data: {
         userId: clientUser.id,
         roleId: clientRole.id,
-        resourceId: null,
+        resourceId: frontEndAppResource.id,
       },
     });
   }

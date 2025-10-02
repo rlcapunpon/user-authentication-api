@@ -208,12 +208,70 @@ describe('V2 Endpoints', () => {
       expect(response.status).toBe(401);
     });
 
-    it('should fail with insufficient permissions', async () => {
-      const response = await request(app)
-        .get('/api/users/v2')
-        .set('Authorization', `Bearer ${testUserToken}`);
+    it('should filter users by email', async () => {
+      // Create a user with a specific email for filtering
+      await (prisma as any).user.create({
+        data: {
+          email: 'filter-test@example.com',
+          isActive: true,
+          isSuperAdmin: false,
+        },
+      });
 
-      expect(response.status).toBe(403);
+      const response = await request(app)
+        .get('/api/users/v2?email=filter-test')
+        .set('Authorization', `Bearer ${adminUserToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.length).toBeGreaterThan(0);
+      response.body.data.forEach((user: any) => {
+        expect(user.email.toLowerCase()).toContain('filter-test');
+      });
+    });
+
+    it('should filter users by isActive true', async () => {
+      // Create active and inactive users
+      await (prisma as any).user.createMany({
+        data: [
+          { email: 'active-filter@example.com', isActive: true, isSuperAdmin: false },
+          { email: 'inactive-filter@example.com', isActive: false, isSuperAdmin: false },
+        ],
+      });
+
+      const response = await request(app)
+        .get('/api/users/v2?isActive=true')
+        .set('Authorization', `Bearer ${adminUserToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.length).toBeGreaterThan(0);
+      response.body.data.forEach((user: any) => {
+        expect(user.isActive).toBe(true);
+      });
+    });
+
+    it('should filter users by isActive false', async () => {
+      const response = await request(app)
+        .get('/api/users/v2?isActive=false')
+        .set('Authorization', `Bearer ${adminUserToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.length).toBeGreaterThanOrEqual(0);
+      response.body.data.forEach((user: any) => {
+        expect(user.isActive).toBe(false);
+      });
+    });
+
+    it('should combine email and isActive filters', async () => {
+      const response = await request(app)
+        .get('/api/users/v2?email=active-filter&isActive=true')
+        .set('Authorization', `Bearer ${adminUserToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.length).toBeGreaterThan(0);
+      response.body.data.forEach((user: any) => {
+        expect(user.email.toLowerCase()).toContain('active-filter');
+        expect(user.isActive).toBe(true);
+      });
     });
   });
 

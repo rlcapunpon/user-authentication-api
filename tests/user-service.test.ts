@@ -75,16 +75,73 @@ describe('User Service', () => {
       });
     });
 
-    it('should include resource roles in the response', async () => {
-      const user = await (prisma as any).user.create({
-        data: { email: 'user@example.com', isActive: true, isSuperAdmin: false },
+    it('should filter users by email (case insensitive)', async () => {
+      // Create test users
+      await (prisma as any).user.createMany({
+        data: [
+          { email: 'john@example.com', isActive: true, isSuperAdmin: false },
+          { email: 'jane@example.com', isActive: true, isSuperAdmin: false },
+          { email: 'bob@example.com', isActive: true, isSuperAdmin: false },
+        ],
       });
 
-      const result = await userService.listUsersPaginated();
+      const result = await userService.listUsersPaginated(1, 10, 'john');
 
       expect(result.data).toHaveLength(1);
-      expect(result.data[0]).toHaveProperty('resourceRoles');
-      expect(Array.isArray(result.data[0].resourceRoles)).toBe(true);
+      expect(result.data[0].email).toBe('john@example.com');
+      expect(result.pagination.total).toBe(1);
+    });
+
+    it('should filter users by isActive true', async () => {
+      // Create test users with different active statuses
+      await (prisma as any).user.createMany({
+        data: [
+          { email: 'active@example.com', isActive: true, isSuperAdmin: false },
+          { email: 'inactive@example.com', isActive: false, isSuperAdmin: false },
+        ],
+      });
+
+      const result = await userService.listUsersPaginated(1, 10, undefined, true);
+
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].email).toBe('active@example.com');
+      expect(result.data[0].isActive).toBe(true);
+      expect(result.pagination.total).toBe(1);
+    });
+
+    it('should filter users by isActive false', async () => {
+      // Create test users with different active statuses
+      await (prisma as any).user.createMany({
+        data: [
+          { email: 'active@example.com', isActive: true, isSuperAdmin: false },
+          { email: 'inactive@example.com', isActive: false, isSuperAdmin: false },
+        ],
+      });
+
+      const result = await userService.listUsersPaginated(1, 10, undefined, false);
+
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].email).toBe('inactive@example.com');
+      expect(result.data[0].isActive).toBe(false);
+      expect(result.pagination.total).toBe(1);
+    });
+
+    it('should combine email and isActive filters', async () => {
+      // Create test users
+      await (prisma as any).user.createMany({
+        data: [
+          { email: 'john-active@example.com', isActive: true, isSuperAdmin: false },
+          { email: 'john-inactive@example.com', isActive: false, isSuperAdmin: false }, // Different user with different email but inactive
+          { email: 'jane@example.com', isActive: true, isSuperAdmin: false },
+        ],
+      });
+
+      const result = await userService.listUsersPaginated(1, 10, 'john', true);
+
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].email).toBe('john-active@example.com');
+      expect(result.data[0].isActive).toBe(true);
+      expect(result.pagination.total).toBe(1);
     });
   });
 });

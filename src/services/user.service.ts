@@ -150,6 +150,13 @@ export const deactivateUser = async (userId: string) => {
   });
 };
 
+export const activateUser = async (userId: string) => {
+  return prisma.user.update({
+    where: { id: userId },
+    data: { isActive: true },
+  });
+};
+
 export const deleteUser = async (userId: string) => {
   // Delete associated refresh tokens first
   await (prisma as any).refreshToken.deleteMany({
@@ -227,11 +234,23 @@ export const updateUserProfile = async (userId: string, email?: string, oldPassw
   return user; // No changes if no email or password provided
 };
 
-export const listUsersPaginated = async (page: number = 1, limit: number = 10) => {
+export const listUsersPaginated = async (page: number = 1, limit: number = 10, email?: string, isActive?: boolean) => {
   const skip = (page - 1) * limit;
+
+  const where: any = {};
+  if (email) {
+    where.email = {
+      contains: email,
+      mode: 'insensitive',
+    };
+  }
+  if (isActive !== undefined) {
+    where.isActive = isActive;
+  }
 
   const [users, total] = await Promise.all([
     (prisma as any).user.findMany({
+      where,
       include: {
         resourceRoles: true,
       },
@@ -241,7 +260,7 @@ export const listUsersPaginated = async (page: number = 1, limit: number = 10) =
         createdAt: 'desc',
       },
     }),
-    (prisma as any).user.count(),
+    (prisma as any).user.count({ where }),
   ]);
 
   const totalPages = Math.ceil(total / limit);

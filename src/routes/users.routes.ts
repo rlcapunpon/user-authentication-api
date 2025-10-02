@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { listUsers, getUser, createUser, updateUserSuperAdmin, assignUserResourceRole, revokeUserResourceRole, deactivateUser, deleteUser, listUsersV2 } from '../controllers/user.controller';
+import { listUsers, getUser, createUser, updateUserSuperAdmin, assignUserResourceRole, revokeUserResourceRole, deactivateUser, activateUser, deleteUser, listUsersV2 } from '../controllers/user.controller';
 import { authGuard } from '../middleware/auth.middleware';
 import { rbacGuard, requireSuperAdmin } from '../middleware/rbac.middleware';
 import { validate } from '../middleware/validate';
@@ -251,6 +251,32 @@ router.post('/revoke-role', rbacGuard(['user:update']), validate(revokeUserResou
  *         description: User not found
  */
 router.put('/:id/deactivate', rbacGuard(['user:update']), validate(userIdSchema), deactivateUser); // Using PUT for deactivation
+
+/**
+ * @swagger
+ * /users/{id}/activate:
+ *   put:
+ *     summary: Activate a user
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       204:
+ *         description: User activated successfully.
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - insufficient permissions
+ *       404:
+ *         description: User not found
+ */
+router.put('/:id/activate', requireSuperAdmin(), validate(userIdSchema), activateUser); // Only SUPERADMIN can activate
 
 /**
  * @swagger

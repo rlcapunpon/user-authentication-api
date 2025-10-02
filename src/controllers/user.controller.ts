@@ -85,6 +85,16 @@ export const deactivateUser = async (req: Request, res: Response) => {
   }
 };
 
+export const activateUser = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    await userService.activateUser(id);
+    res.status(204).send();
+  } catch (error) {
+    handleUnknownError(error, res, 500);
+  }
+};
+
 export const deleteUser = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -102,7 +112,9 @@ export const listUsersV2 = async (req: Request, res: Response) => {
   try {
     const page = parseInt(req.query.page as string, 10) || 1;
     const limit = parseInt(req.query.limit as string, 10) || 10;
-    const result = await userService.listUsersPaginated(page, limit);
+    const email = req.query.email as string | undefined;
+    const isActive = req.query.isActive ? (req.query.isActive as string).toLowerCase() === 'true' : undefined;
+    const result = await userService.listUsersPaginated(page, limit, email, isActive);
     res.json(result);
   } catch (error) {
     handleUnknownError(error, res, 500);
