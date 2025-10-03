@@ -267,6 +267,25 @@ async function main() {
   // Assign users to global roles (using FRONT_END_APP as the main resource)
   console.log('Assigning users to global roles...');
 
+  // Assign SUPERADMIN role to superadmin user (using WINDBOOKS_APP resource)
+  const existingSuperAdminRole = await (prisma as any).userResourceRole.findFirst({
+    where: {
+      userId: superAdminUser.id,
+      roleId: superAdminRole.id,
+      resourceId: frontEndAppResource.id,
+    },
+  });
+
+  if (!existingSuperAdminRole) {
+    await (prisma as any).userResourceRole.create({
+      data: {
+        userId: superAdminUser.id,
+        roleId: superAdminRole.id,
+        resourceId: frontEndAppResource.id,
+      },
+    });
+  }
+
   // Assign approver role to approver user (using FRONT_END_APP resource)
   const existingApproverRole = await (prisma as any).userResourceRole.findFirst({
     where: {

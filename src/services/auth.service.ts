@@ -224,6 +224,16 @@ export const refresh = async (refreshToken: string) => {
 
 export const getMe = async (userId: string) => {
   try {
+    // First, get the WINDBOOKS_APP resource ID
+    const windbooksAppResource = await (prisma as any).resource.findFirst({
+      where: { name: 'WINDBOOKS_APP' },
+      select: { id: true }
+    });
+
+    if (!windbooksAppResource) {
+      throw new Error('WINDBOOKS_APP resource not found');
+    }
+
     const me = await (prisma as any).user.findUnique({
       where: { id: userId },
       select: {
@@ -269,12 +279,35 @@ export const getMe = async (userId: string) => {
       throw new Error('User not found');
     }
 
+    // Calculate isSuperAdmin based on resource roles
+    // A user is super admin if they have SUPERADMIN role to WINDBOOKS_APP resource
+    const calculatedIsSuperAdmin = me.resourceRoles.some((rr: any) =>
+      rr.resourceId === windbooksAppResource.id && rr.role.name === 'SUPERADMIN'
+    );
+
+    // Debug logging for isSuperAdmin calculation
+    console.log('getMe isSuperAdmin calculation:', {
+      userId,
+      email: me.email,
+      storedIsSuperAdmin: me.isSuperAdmin,
+      calculatedIsSuperAdmin,
+      windbooksAppResourceId: windbooksAppResource.id,
+      resourceRoles: me.resourceRoles.map((rr: any) => ({
+        resourceId: rr.resourceId,
+        roleName: rr.role.name
+      })),
+      hasSuperAdminRole: me.resourceRoles.some((rr: any) =>
+        rr.resourceId === windbooksAppResource.id && rr.role.name === 'SUPERADMIN'
+      ),
+      timestamp: new Date().toISOString(),
+    });
+
     // Transform to match response structure
     const transformedUser = {
       id: me.id,
       email: me.email,
       isActive: me.isActive,
-      isSuperAdmin: me.isSuperAdmin,
+      isSuperAdmin: calculatedIsSuperAdmin,  // Use calculated value instead of stored value
       createdAt: me.createdAt,
       updatedAt: me.updatedAt,
       details: me.details ? {

@@ -18,6 +18,22 @@ describe('Authentication Endpoints', () => {
     await (prisma as any).role.deleteMany({});
     await (prisma as any).resource.deleteMany({});
     
+    // Create required roles and resources for tests
+    const superAdminRole = await (prisma as any).role.create({
+      data: {
+        name: 'SUPERADMIN',
+        description: 'Global super admin role with full system access',
+        permissions: ['*'],
+      },
+    });
+    
+    const windbooksAppResource = await (prisma as any).resource.create({
+      data: {
+        name: 'WINDBOOKS_APP',
+        description: 'Main frontend application resource for global role assignments',
+      },
+    });
+    
     // Create test user
     const hashedPassword = await hashPassword(testPassword);
     const testUser = await (prisma as any).user.create({
@@ -400,6 +416,23 @@ describe('Authentication Endpoints', () => {
               passwordHash: hashedPassword,
             },
           },
+        },
+      });
+
+      // Get the SUPERADMIN role and WINDBOOKS_APP resource
+      const superAdminRole = await (prisma as any).role.findFirst({
+        where: { name: 'SUPERADMIN' },
+      });
+      const windbooksAppResource = await (prisma as any).resource.findFirst({
+        where: { name: 'WINDBOOKS_APP' },
+      });
+
+      // Assign SUPERADMIN role to WINDBOOKS_APP resource for the user
+      await (prisma as any).userResourceRole.create({
+        data: {
+          userId: superAdminUser.id,
+          roleId: superAdminRole.id,
+          resourceId: windbooksAppResource.id,
         },
       });
 
