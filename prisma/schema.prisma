@@ -23,6 +23,7 @@ model User {
   emailCodes    EmailVerificationCode[]
   passwordUpdates UserPasswordUpdate[]
   loginHistory UserLoginHistory[]
+  passwordResetRequests PasswordResetRequests[]
 }
 
 model UserDetails {
@@ -147,5 +148,16 @@ model UserLoginHistory {
   metadata  Json?
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
+}
+
+model PasswordResetRequests {
+  id              String   @id @default(uuid())
+  userId          String
+  userEmail       String
+  lastRequestDate DateTime @default(now())
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userEmail])
   @@index([userId])
 }

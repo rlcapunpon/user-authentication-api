@@ -35,6 +35,12 @@ export interface PasswordUpdateNotificationData {
   updatedAt: string;
 }
 
+export interface PasswordResetEmailData {
+  to: string;
+  resetToken: string;
+  resetUrl: string;
+}
+
 export const createVerificationEmail = (data: EmailVerificationData) => {
   const { to, verificationCode, verificationUrl } = data;
 
@@ -769,6 +775,326 @@ export const sendPasswordUpdateNotification = async (data: PasswordUpdateNotific
     return true;
   } catch (error) {
     console.error('Failed to send password update notification:', {
+      to: data.to,
+      error: error instanceof Error ? {
+        message: error.message,
+        name: error.name,
+        stack: error.stack,
+      } : error,
+      timestamp: new Date().toISOString(),
+    });
+    return false;
+  }
+};
+
+export const createPasswordResetEmail = (data: PasswordResetEmailData) => {
+  const { to, resetToken, resetUrl } = data;
+
+  const subject = '🔑 Reset Your WindBooks Password';
+  const resetLink = `${resetUrl}?token=${resetToken}`;
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Reset Your Password - WindBooks</title>
+      <style>
+        body {
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          line-height: 1.6;
+          color: #2c3e50;
+          margin: 0;
+          padding: 0;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          min-height: 100vh;
+        }
+        .email-wrapper {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          padding: 40px 20px;
+          min-height: 100vh;
+        }
+        .container {
+          max-width: 600px;
+          margin: 0 auto;
+          background: #ffffff;
+          border-radius: 16px;
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+          overflow: hidden;
+        }
+        .header {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          padding: 40px 30px;
+          text-align: center;
+          position: relative;
+        }
+        .header::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="reset" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="2" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1.5" fill="rgba(255,255,255,0.08)"/><circle cx="50" cy="10" r="1" fill="rgba(255,255,255,0.06)"/></pattern></defs><rect width="100" height="100" fill="url(%23reset)"/></svg>') repeat;
+        }
+        .header h1 {
+          color: #ffffff;
+          margin: 0;
+          font-size: 28px;
+          font-weight: 300;
+          text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          position: relative;
+          z-index: 1;
+        }
+        .reset-icon {
+          font-size: 48px;
+          margin-bottom: 10px;
+          display: block;
+          position: relative;
+          z-index: 1;
+        }
+        .content {
+          padding: 40px 30px;
+          background: #ffffff;
+        }
+        .content h2 {
+          color: #2c3e50;
+          font-size: 24px;
+          font-weight: 400;
+          margin-bottom: 20px;
+          text-align: center;
+        }
+        .reset-message {
+          background: linear-gradient(135deg, #e3f2fd 0%, #f0f8ff 100%);
+          border-left: 4px solid #667eea;
+          padding: 20px;
+          border-radius: 8px;
+          margin: 25px 0;
+        }
+        .button {
+          display: inline-block;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          padding: 16px 32px;
+          text-decoration: none;
+          border-radius: 50px;
+          margin: 25px 0;
+          font-weight: 600;
+          text-align: center;
+          width: 200px;
+          box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+          transition: all 0.3s ease;
+          font-size: 16px;
+        }
+        .button:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 12px 25px rgba(102, 126, 234, 0.4);
+        }
+        .button-container {
+          text-align: center;
+          margin: 30px 0;
+        }
+        .reset-details {
+          background: #f8fbff;
+          border: 1px solid #e1f5fe;
+          border-radius: 8px;
+          padding: 20px;
+          margin: 25px 0;
+        }
+        .reset-details p {
+          margin: 8px 0;
+          font-size: 14px;
+          color: #546e7a;
+        }
+        .reset-link {
+          word-break: break-all;
+          color: #667eea;
+          text-decoration: none;
+        }
+        .footer {
+          background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+          padding: 30px;
+          text-align: center;
+          font-size: 14px;
+          color: #78909c;
+          border-top: 1px solid #eceff1;
+        }
+        .security-note {
+          color: #ff7043;
+          font-weight: 500;
+          background: #fff3e0;
+          padding: 15px;
+          border-radius: 8px;
+          border-left: 4px solid #ff7043;
+          margin: 20px 0;
+        }
+        .security-note .icon {
+          font-size: 18px;
+          margin-right: 8px;
+        }
+        .divider {
+          height: 2px;
+          background: linear-gradient(90deg, transparent, #667eea, transparent);
+          margin: 30px 0;
+          border-radius: 2px;
+        }
+        .help-section {
+          background: linear-gradient(135deg, #e8f5e8 0%, #f0fff4 100%);
+          border-radius: 8px;
+          padding: 20px;
+          margin: 25px 0;
+          text-align: center;
+        }
+        .help-section h3 {
+          color: #2e7d32;
+          margin: 0 0 10px 0;
+          font-size: 18px;
+        }
+        .help-section p {
+          color: #4caf50;
+          margin: 5px 0;
+          font-size: 14px;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="email-wrapper">
+        <div class="container">
+          <div class="header">
+            <span class="reset-icon">🔑</span>
+            <h1>Password Reset</h1>
+          </div>
+          <div class="content">
+            <h2>Forgot Your Password? 🔒</h2>
+
+            <div class="reset-message">
+              <p><strong>Hi there!</strong> 👋</p>
+              <p>We received a request to reset your WindBooks account password. No worries - it happens to the best of us!</p>
+            </div>
+
+            <p>To reset your password and regain access to your account, simply click the button below. This will take you to a secure page where you can create a new password.</p>
+
+            <div class="button-container">
+              <a href="${resetLink}" class="button">🔑 Reset My Password</a>
+            </div>
+
+            <div class="help-section">
+              <h3>💡 Need Help?</h3>
+              <p>This link will expire in 1 hour for your security</p>
+              <p>If you didn't request this reset, you can safely ignore this email</p>
+              <p>Your account will remain secure</p>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="reset-details">
+              <p><strong>Alternative reset method:</strong></p>
+              <p>If the button above doesn't work, you can copy and paste this link into your browser:</p>
+              <p><a href="${resetLink}" class="reset-link">${resetLink}</a></p>
+            </div>
+
+            <div class="security-note">
+              <span class="icon">⏰</span>
+              <strong>Time-sensitive:</strong> For your security, this password reset link will expire in 1 hour. If it expires, you can request a new one.
+            </div>
+
+            <div class="divider"></div>
+
+            <p>If you didn't request this password reset, please ignore this email. Your password will remain unchanged, and your account will stay secure.</p>
+
+            <p style="margin-top: 30px;">
+              <strong>Need assistance? 🤝</strong><br>
+              <span style="color: #667eea;">The WindBooks Support Team</span>
+            </p>
+          </div>
+          <div class="footer">
+            <p>This email was sent to <strong>${to}</strong></p>
+            <p>Questions about your account? We're here to help! 💙</p>
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const text = `
+    🔑 PASSWORD RESET - WindBooks
+
+    Hi there! 👋
+
+    We received a request to reset your WindBooks account password. No worries - it happens to the best of us!
+
+    To reset your password and regain access to your account, please click this link:
+    ${resetLink}
+
+    💡 Need Help?
+    - This link will expire in 1 hour for your security
+    - If you didn't request this reset, you can safely ignore this email
+    - Your account will remain secure
+
+    ⏰ Time-sensitive: For your security, this password reset link will expire in 1 hour. If it expires, you can request a new one.
+
+    If you didn't request this password reset, please ignore this email. Your password will remain unchanged, and your account will stay secure.
+
+    Need assistance? 🤝
+    The WindBooks Support Team
+
+    ---
+    This email was sent to ${to}
+    Questions about your account? We're here to help!
+  `;
+
+  return {
+    to,
+    from: SENDGRID_FROM,
+    subject,
+    html,
+    text,
+  };
+};
+
+export const sendPasswordResetEmail = async (data: PasswordResetEmailData): Promise<boolean> => {
+  try {
+    console.log('Attempting to send password reset email:', {
+      to: data.to,
+      resetToken: data.resetToken.substring(0, 8) + '...',
+      timestamp: new Date().toISOString(),
+    });
+
+    // Skip actual email sending in test environment for faster tests
+    if (process.env.NODE_ENV === 'test') {
+      console.log('Test environment detected - skipping actual email send:', {
+        to: data.to,
+        resetToken: data.resetToken.substring(0, 8) + '...',
+        timestamp: new Date().toISOString(),
+      });
+
+      // Simulate a small delay to make tests more realistic
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      console.log('Password reset email sent successfully (mocked):', {
+        to: data.to,
+        messageId: 'mock-password-reset-message-id-' + Math.random().toString(36).substring(7),
+        statusCode: 202,
+        timestamp: new Date().toISOString(),
+      });
+
+      return true;
+    }
+
+    const msg = createPasswordResetEmail(data);
+    const [response] = await sgMail.send(msg);
+
+    console.log('Password reset email sent successfully:', {
+      to: data.to,
+      messageId: response.headers['x-message-id'],
+      statusCode: response.statusCode,
+      timestamp: new Date().toISOString(),
+    });
+
+    return true;
+  } catch (error) {
+    console.error('Failed to send password reset email:', {
       to: data.to,
       error: error instanceof Error ? {
         message: error.message,

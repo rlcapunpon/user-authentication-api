@@ -7,6 +7,7 @@ import { generateAccessToken } from '../src/utils/jwt';
 // Mock the email service
 jest.mock('../src/services/email.service', () => ({
   sendPasswordUpdateNotification: jest.fn().mockResolvedValue(true),
+  sendPasswordResetEmail: jest.fn().mockResolvedValue(true),
 }));
 
 const mockSendPasswordUpdateNotification = require('../src/services/email.service').sendPasswordUpdateNotification;
@@ -293,6 +294,272 @@ describe('User Password Update Endpoints', () => {
         .set('Authorization', `Bearer ${otherUserToken}`);
 
       expect(response.status).toBe(403);
+    });
+  });
+});
+
+// Mock the email service for password reset
+jest.mock('../src/services/email.service', () => ({
+  sendPasswordUpdateNotification: jest.fn().mockResolvedValue(true),
+  sendPasswordResetEmail: jest.fn().mockResolvedValue(true),
+}));
+
+const mockSendPasswordResetEmail = require('../src/services/email.service').sendPasswordResetEmail;
+
+describe('Password Reset Endpoints', () => {
+  let testUserId: string;
+  let testUserEmail: string;
+  let testUserPassword: string;
+
+  beforeAll(async () => {
+    // Clear test data
+    await (prisma as any).passwordResetRequests.deleteMany({});
+    await (prisma as any).userPasswordUpdate.deleteMany({});
+    await (prisma as any).userResourceRole.deleteMany({});
+    await (prisma as any).refreshToken.deleteMany({});
+    await (prisma as any).userDetails.deleteMany({});
+    await (prisma as any).user.deleteMany({});
+    await (prisma as any).role.deleteMany({});
+    await (prisma as any).resource.deleteMany({});
+
+    // Create test user
+    testUserEmail = 'reset-test@example.com';
+    testUserPassword = 'testpassword123';
+    const hashedPassword = await hashPassword(testUserPassword);
+    const testUser = await (prisma as any).user.create({
+      data: {
+        email: testUserEmail,
+        isActive: true,
+        isSuperAdmin: false,
+        credential: {
+          create: {
+            passwordHash: hashedPassword,
+          },
+        },
+      },
+    });
+    testUserId = testUser.id;
+  });
+
+  afterAll(async () => {
+    // Clean up test data
+    await (prisma as any).passwordResetRequests.deleteMany({});
+    await (prisma as any).userPasswordUpdate.deleteMany({});
+    await (prisma as any).userResourceRole.deleteMany({});
+    await (prisma as any).refreshToken.deleteMany({});
+    await (prisma as any).userDetails.deleteMany({});
+    await (prisma as any).user.deleteMany({});
+    await (prisma as any).role.deleteMany({});
+    await (prisma as any).resource.deleteMany({});
+  });
+
+  describe('POST /api/user/auth/reset-password/request/{email}', () => {
+    it('should send password reset email for existing user', async () => {
+      (mockSendPasswordResetEmail as jest.Mock).mockClear();
+
+      const response = await request(app)
+        .post(`/api/user/auth/reset-password/request/${testUserEmail}`)
+        .send();
+
+      expect(response.status).toBe(200);
+      expect(response.body.message).toContain('Password reset email sent');
+
+      // Verify PasswordResetRequests record was created
+      const resetRequest = await (prisma as any).passwordResetRequests.findFirst({
+        where: { userEmail: testUserEmail },
+      });
+      expect(resetRequest).not.toBeNull();
+      expect(resetRequest?.userId).toBe(testUserId);
+
+      // Verify email was sent
+      expect(mockSendPasswordResetEmail).toHaveBeenCalledTimes(1);
+      expect(mockSendPasswordResetEmail).toHaveBeenCalledWith({
+        to: testUserEmail,
+        resetToken: expect.any(String),
+        resetUrl: expect.stringContaining('http://localhost:5173/reset-password'),
+      });
+    });
+
+    it('should handle password reset request for non-existent user (returns success to prevent email enumeration)', async () => {
+      const fakeEmail = 'truly-nonexistent@example.com';
+
+      // Clear any previous mock calls
+      (mockSendPasswordResetEmail as jest.Mock).mockClear();
+
+      const response = await request(app)
+        .post(`/api/user/auth/reset-password/request/${fakeEmail}`)
+        .send();
+
+      expect(response.status).toBe(200);
+      expect(response.body.message).toContain('If an account with that email exists');
+      // Email should not be sent for non-existent users
+      expect(mockSendPasswordResetEmail).not.toHaveBeenCalled();
+    });
+
+    it('should reject password reset request within 30 minutes of last request', async () => {
+      const rateLimitEmail = 'ratelimit-test@example.com';
+      const rateLimitPassword = 'testpassword123';
+      
+      // Create a fresh user for rate limiting test
+      const hashedPassword = await hashPassword(rateLimitPassword);
+      const rateLimitUser = await (prisma as any).user.create({
+        data: {
+          email: rateLimitEmail,
+          isActive: true,
+          isSuperAdmin: false,
+          credential: {
+            create: {
+              passwordHash: hashedPassword,
+            },
+          },
+        },
+      });
+      const rateLimitUserId = rateLimitUser.id;
+
+      // First make a successful request
+      const firstResponse = await request(app)
+        .post(`/api/user/auth/reset-password/request/${rateLimitEmail}`)
+        .send();
+      expect(firstResponse.status).toBe(200);
+
+      // Clear the mock to check the second call
+      (mockSendPasswordResetEmail as jest.Mock).mockClear();
+
+      // Try to make another request immediately (should be rate limited)
+      const secondResponse = await request(app)
+        .post(`/api/user/auth/reset-password/request/${rateLimitEmail}`)
+        .send();
+
+      expect(secondResponse.status).toBe(429);
+      expect(secondResponse.body.message).toContain('Please wait');
+      // Email should not be sent due to rate limiting
+      expect(mockSendPasswordResetEmail).not.toHaveBeenCalled();
+
+      // Clean up
+      await (prisma as any).passwordResetRequests.deleteMany({ where: { userId: rateLimitUserId } });
+      await (prisma as any).user.delete({ where: { id: rateLimitUserId } });
+    });
+
+    it('should allow password reset request after 30 minutes have passed', async () => {
+      const timeTestEmail = 'timetest@example.com';
+      const timeTestPassword = 'testpassword123';
+      
+      // Create a fresh user for time test
+      const hashedPassword = await hashPassword(timeTestPassword);
+      const timeTestUser = await (prisma as any).user.create({
+        data: {
+          email: timeTestEmail,
+          isActive: true,
+          isSuperAdmin: false,
+          credential: {
+            create: {
+              passwordHash: hashedPassword,
+            },
+          },
+        },
+      });
+      const timeTestUserId = timeTestUser.id;
+
+      // First make a successful request
+      const firstResponse = await request(app)
+        .post(`/api/user/auth/reset-password/request/${timeTestEmail}`)
+        .send();
+      expect(firstResponse.status).toBe(200);
+
+      // Update the last request to be more than 30 minutes ago
+      const thirtyOneMinutesAgo = new Date(Date.now() - 31 * 60 * 1000);
+      await (prisma as any).passwordResetRequests.updateMany({
+        where: { userEmail: timeTestEmail },
+        data: { lastRequestDate: thirtyOneMinutesAgo },
+      });
+
+      (mockSendPasswordResetEmail as jest.Mock).mockClear();
+
+      const response = await request(app)
+        .post(`/api/user/auth/reset-password/request/${timeTestEmail}`)
+        .send();
+
+      expect(response.status).toBe(200);
+      expect(mockSendPasswordResetEmail).toHaveBeenCalledTimes(1);
+      expect(mockSendPasswordResetEmail).toHaveBeenCalledWith({
+        to: timeTestEmail,
+        resetToken: expect.any(String),
+        resetUrl: expect.stringContaining('http://localhost:5173/reset-password'),
+      });
+
+      // Clean up
+      await (prisma as any).passwordResetRequests.deleteMany({ where: { userId: timeTestUserId } });
+      await (prisma as any).user.delete({ where: { id: timeTestUserId } });
+    });
+  });
+
+  describe('POST /api/user/auth/reset-password', () => {
+    it('should reset password with valid JWT token', async () => {
+      const newPassword = 'newresetpassword456';
+      const resetToken = generateAccessToken({
+        userId: testUserId,
+        email: testUserEmail,
+        isSuperAdmin: false
+      });
+
+      const response = await request(app)
+        .post('/api/user/auth/reset-password')
+        .set('Authorization', `Bearer ${resetToken}`)
+        .send({
+          new_password: newPassword,
+          new_password_confirmation: newPassword,
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.message).toContain('Password reset successfully');
+
+      // Verify password was updated
+      const updatedUser = await (prisma as any).user.findUnique({
+        where: { id: testUserId },
+        include: { credential: true },
+      });
+      expect(updatedUser?.credential?.passwordHash).not.toBeUndefined();
+    });
+
+    it('should reject password reset without JWT token', async () => {
+      const response = await request(app)
+        .post('/api/user/auth/reset-password')
+        .send({
+          new_password: 'newpassword123',
+          new_password_confirmation: 'newpassword123',
+        });
+
+      expect(response.status).toBe(401);
+    });
+
+    it('should reject password reset with invalid JWT token', async () => {
+      const response = await request(app)
+        .post('/api/user/auth/reset-password')
+        .set('Authorization', 'Bearer invalidtoken')
+        .send({
+          new_password: 'newpassword123',
+          new_password_confirmation: 'newpassword123',
+        });
+
+      expect(response.status).toBe(401);
+    });
+
+    it('should reject password reset when new password confirmation does not match', async () => {
+      const resetToken = generateAccessToken({
+        userId: testUserId,
+        email: testUserEmail,
+        isSuperAdmin: false
+      });
+
+      const response = await request(app)
+        .post('/api/user/auth/reset-password')
+        .set('Authorization', `Bearer ${resetToken}`)
+        .send({
+          new_password: 'newpassword123',
+          new_password_confirmation: 'differentpassword',
+        });
+
+      expect(response.status).toBe(400);
     });
   });
 });

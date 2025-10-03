@@ -7,3 +7,4 @@ export { default as configRoutes } from './config.routes';
 export { default as resourcesRoutes } from './resources.routes';
 export { default as userDetailsRoutes } from './userDetails.routes';
 export { default as adminRoutes } from './admin.routes';
+export { default as passwordResetRoutes } from './passwordReset.routes';
