@@ -7,6 +7,7 @@ import { createUserSchema, updateUserSuperAdminSchema, userIdSchema, paginationQ
 import { assignUserResourceRoleSchema, revokeUserResourceRoleSchema } from '../schemas/resource.schema';
 
 const router = Router();
+const userSpecificRouter = Router();
 
 /**
  * @swagger
@@ -94,7 +95,7 @@ router.get('/v2', rbacGuard(['user:read']), validate(paginationQuerySchema), lis
  *       500:
  *         description: Internal server error
  */
-router.get('/last-login', authGuard, getLastLogin);
+userSpecificRouter.get('/last-login', authGuard, getLastLogin);
 
 /**
  * @swagger
@@ -378,7 +379,7 @@ router.delete('/:id', rbacGuard(['user:delete']), validate(userIdSchema), delete
  *       404:
  *         description: User not found
  */
-router.post('/update/password', authGuard, validate(updatePasswordSchema), updateUserPassword);
+userSpecificRouter.post('/update/password', authGuard, validate(updatePasswordSchema), updateUserPassword);
 
 /**
  * @swagger
@@ -421,6 +422,7 @@ router.post('/update/password', authGuard, validate(updatePasswordSchema), updat
  *       404:
  *         description: User not found
  */
-router.get('/last-update/creds/:userId', authGuard, validate(passwordHistoryUserIdSchema), getUserPasswordUpdateHistory);
+userSpecificRouter.get('/last-update/creds/:userId', authGuard, validate(passwordHistoryUserIdSchema), getUserPasswordUpdateHistory);
 
 export default router;
+export { userSpecificRouter };

@@ -101,10 +101,10 @@ describe('User Password Update Endpoints', () => {
     await (prisma as any).resource.deleteMany({});
   });
 
-  describe('POST /api/users/update/password', () => {
+  describe('POST /api/user/update/password', () => {
     it('should allow SUPERADMIN to update any user password without current password', async () => {
       const response = await request(app)
-        .post('/api/users/update/password')
+        .post('/api/user/update/password')
         .set('Authorization', `Bearer ${adminUserToken}`)
         .send({
           userId: testUserId,
@@ -152,7 +152,7 @@ describe('User Password Update Endpoints', () => {
       const freshUserToken = generateAccessToken({ userId: freshUserId, email: freshUserEmail, isSuperAdmin: false });
 
       const response = await request(app)
-        .post('/api/users/update/password')
+        .post('/api/user/update/password')
         .set('Authorization', `Bearer ${freshUserToken}`)
         .send({
           userId: freshUserId,
@@ -177,7 +177,7 @@ describe('User Password Update Endpoints', () => {
 
     it('should reject regular user updating another user password', async () => {
       const response = await request(app)
-        .post('/api/users/update/password')
+        .post('/api/user/update/password')
         .set('Authorization', `Bearer ${otherUserToken}`)
         .send({
           userId: testUserId,
@@ -192,7 +192,7 @@ describe('User Password Update Endpoints', () => {
 
     it('should reject when current password is incorrect', async () => {
       const response = await request(app)
-        .post('/api/users/update/password')
+        .post('/api/user/update/password')
         .set('Authorization', `Bearer ${testUserToken}`)
         .send({
           userId: testUserId,
@@ -207,7 +207,7 @@ describe('User Password Update Endpoints', () => {
 
     it('should reject when new password confirmation does not match', async () => {
       const response = await request(app)
-        .post('/api/users/update/password')
+        .post('/api/user/update/password')
         .set('Authorization', `Bearer ${testUserToken}`)
         .send({
           userId: testUserId,
@@ -225,7 +225,7 @@ describe('User Password Update Endpoints', () => {
       (mockSendPasswordUpdateNotification as jest.Mock).mockClear();
 
       const response = await request(app)
-        .post('/api/users/update/password')
+        .post('/api/user/update/password')
         .set('Authorization', `Bearer ${adminUserToken}`)
         .send({
           userId: testUserId,
@@ -247,7 +247,7 @@ describe('User Password Update Endpoints', () => {
     });
   });
 
-  describe('GET /api/users/last-update/creds/:userId', () => {
+  describe('GET /api/user/last-update/creds/:userId', () => {
     it('should return password update history for existing user with updates', async () => {
       // First create a password update record
       await (prisma as any).userPasswordUpdate.create({
@@ -258,7 +258,7 @@ describe('User Password Update Endpoints', () => {
       });
 
       const response = await request(app)
-        .get(`/api/users/last-update/creds/${testUserId}`)
+        .get(`/api/user/last-update/creds/${testUserId}`)
         .set('Authorization', `Bearer ${adminUserToken}`);
 
       expect(response.status).toBe(200);
@@ -270,7 +270,7 @@ describe('User Password Update Endpoints', () => {
 
     it('should return null values for user with no password updates', async () => {
       const response = await request(app)
-        .get(`/api/users/last-update/creds/${otherUserId}`)
+        .get(`/api/user/last-update/creds/${otherUserId}`)
         .set('Authorization', `Bearer ${adminUserToken}`);
 
       expect(response.status).toBe(200);
@@ -282,7 +282,7 @@ describe('User Password Update Endpoints', () => {
     it('should reject when user not found', async () => {
       const fakeUserId = '00000000-0000-0000-0000-000000000000';
       const response = await request(app)
-        .get(`/api/users/last-update/creds/${fakeUserId}`)
+        .get(`/api/user/last-update/creds/${fakeUserId}`)
         .set('Authorization', `Bearer ${adminUserToken}`);
 
       expect(response.status).toBe(404);
@@ -290,7 +290,7 @@ describe('User Password Update Endpoints', () => {
 
     it('should reject when regular user tries to access another user history', async () => {
       const response = await request(app)
-        .get(`/api/users/last-update/creds/${testUserId}`)
+        .get(`/api/user/last-update/creds/${testUserId}`)
         .set('Authorization', `Bearer ${otherUserToken}`);
 
       expect(response.status).toBe(403);

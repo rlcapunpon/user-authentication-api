@@ -71,7 +71,7 @@ describe('User Login History Endpoints', () => {
     await (prisma as any).resource.deleteMany({});
   });
 
-  describe('GET /api/users/last-login', () => {
+  describe('GET /api/user/last-login', () => {
     it('should return last login timestamp for authenticated user with login history', async () => {
       // First, simulate a login by creating a login history entry
       await (prisma as any).userLoginHistory?.create?.({
@@ -84,7 +84,7 @@ describe('User Login History Endpoints', () => {
       });
 
       const response = await request(app)
-        .get('/api/users/last-login')
+        .get('/api/user/last-login')
         .set('Authorization', `Bearer ${testUserToken}`)
         .expect(200);
 
@@ -96,7 +96,7 @@ describe('User Login History Endpoints', () => {
 
     it('should return null last_login for user with no login history', async () => {
       const response = await request(app)
-        .get('/api/users/last-login')
+        .get('/api/user/last-login')
         .set('Authorization', `Bearer ${adminUserToken}`)
         .expect(200);
 
@@ -106,13 +106,13 @@ describe('User Login History Endpoints', () => {
 
     it('should fail without authentication', async () => {
       await request(app)
-        .get('/api/users/last-login')
+        .get('/api/user/last-login')
         .expect(401);
     });
 
     it('should fail with invalid token', async () => {
       await request(app)
-        .get('/api/users/last-login')
+        .get('/api/user/last-login')
         .set('Authorization', 'Bearer invalid-token')
         .expect(401);
     });
@@ -147,7 +147,7 @@ describe('User Login History Endpoints', () => {
       });
 
       const response = await request(app)
-        .get('/api/users/last-login')
+        .get('/api/user/last-login')
         .set('Authorization', `Bearer ${testUserToken}`)
         .expect(200);
 
