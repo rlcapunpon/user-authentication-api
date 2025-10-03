@@ -254,3 +254,21 @@ export const getUserResourcesAndRoles = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Failed to get user resources and roles' });
   }
 };
+
+/**
+ * Get resource roles for authenticated user given a list of resourceIds
+ */
+export const getResourceRoles = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.userId;
+    const { resources } = req.body;
+
+    const result = await rbacService.getResourceRoles(userId, resources);
+    res.json(result);
+
+  } catch (error) {
+    console.error('Error getting resource roles:', error);
+    res.status(500).json({ message: 'Failed to get resource roles' });
+  }
+};
+

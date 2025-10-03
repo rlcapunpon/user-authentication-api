@@ -1,22 +1,16 @@
-/**
- * @swagger
- * tags:
- *   name: Resources
- *   description: Resource-based role and permission management
- */
-
 import { Router } from 'express';
 import { authGuard } from '../middleware/auth.middleware';
 import { rbacGuard, authorizeResource } from '../middleware/rbac.middleware';
 import { validate } from '../middleware/validate';
-import { getResources, createResource, createRole, getUserRoleForResource, getResourcesV2, getUserResourcesAndRoles } from '../controllers/rbac.controller';
+import { getResources, createResource, createRole, getUserRoleForResource, getResourcesV2, getUserResourcesAndRoles, getResourceRoles } from '../controllers/rbac.controller';
 import { assignUserResourceRole, revokeUserResourceRole } from '../controllers/user.controller';
 import { 
   createResourceSchema,
   createRoleSchema,
   assignUserResourceRoleSchema,
   revokeUserResourceRoleSchema,
-  paginationQuerySchema
+  paginationQuerySchema,
+  getResourceRolesSchema
 } from '../schemas/resource.schema';
 
 const router = Router();
@@ -400,5 +394,68 @@ router.get('/:resourceId/user-role', authGuard, getUserRoleForResource);
  *         description: Internal server error
  */
 router.get('/:userId', authGuard, getUserResourcesAndRoles);
+
+/**
+ * @swagger
+ * /resources/user-roles:
+ *   post:
+ *     summary: Get resource roles for authenticated user given a list of resourceIds
+ *     description: Retrieve the roles assigned to the currently authenticated user for a list of specified resources
+ *     tags: [Resources]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - resources
+ *             properties:
+ *               resources:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 minItems: 1
+ *                 description: Array of resource IDs to get roles for
+ *                 example: ["resource1", "resource2"]
+ *     responses:
+ *       200:
+ *         description: Resource roles retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 resourceRoles:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       resourceId:
+ *                         type: string
+ *                         description: The resource ID
+ *                       roleName:
+ *                         type: string
+ *                         description: The role name
+ *                       roleId:
+ *                         type: string
+ *                         description: The role ID
+ *                   example:
+ *                     - resourceId: "resource1"
+ *                       roleName: "STAFF"
+ *                       roleId: "role123"
+ *                     - resourceId: "resource2"
+ *                       roleName: "ADMIN"
+ *                       roleId: "role456"
+ *       400:
+ *         description: Bad request - invalid request body
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
+ */
+router.post('/user-roles', authGuard, validate(getResourceRolesSchema), getResourceRoles);
 
 export default router;

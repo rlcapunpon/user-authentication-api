@@ -86,3 +86,19 @@ export const paginatedResourcesResponseSchema = z.object({
     hasPrev: z.boolean(),
   }),
 });
+
+export const getResourceRolesSchema = z.object({
+  body: z.object({
+    resources: z.array(z.string().min(1, 'Resource ID cannot be empty'))
+      .min(1, 'At least one resource ID is required'),
+  }),
+});
+
+export const getResourceRolesResponseSchema = z.object({
+  resourceRoles: z.array(z.object({
+    resourceId: z.string(),
+    roleName: z.string(),
+    roleId: z.string(),
+  })),
+});
+

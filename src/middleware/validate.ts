@@ -19,6 +19,16 @@ export const validate = (schema: z.ZodObject<any, any>) => async (req: Request, 
           const fieldName = field.split('.').pop() || field;
           return `${fieldName} is required`;
         }
+        if (err.code === 'invalid_type' && err.message.includes('expected array, received undefined')) {
+          // Extract just the field name from body.field format
+          const fieldName = field.split('.').pop() || field;
+          return `${fieldName} is required`;
+        }
+        if (err.code === 'invalid_type' && err.message.includes('expected array, received string')) {
+          // Extract just the field name from body.field format
+          const fieldName = field.split('.').pop() || field;
+          return `${fieldName} must be an array`;
+        }
         return `${field}: ${err.message}`;
       });
       

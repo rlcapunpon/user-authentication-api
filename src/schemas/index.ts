@@ -7,5 +7,7 @@ export {
   revokeUserResourceRoleSchema,
   unassignUserResourceRoleSchema,
   getUserResourcePermissionsSchema,
-  roleIdSchema
+  roleIdSchema,
+  getResourceRolesSchema,
+  getResourceRolesResponseSchema
 } from './resource.schema';

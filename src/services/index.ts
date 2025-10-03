@@ -11,7 +11,8 @@ export {
   getUserPermissionsFromRoles,
   getUserAccessibleResources,
   getUserRoleForResource,
-  getUserResourcesAndRoles
+  getUserResourcesAndRoles,
+  getResourceRoles
 } from './rbac.service';
 export * from './config.service';
 export * from './emailVerification.service';

@@ -741,7 +741,7 @@ paths:
               $ref: '#/components/schemas/CreateResourceRole'
       responses:
         '201':
-          description: Resource role created successfully
+          description: Role created successfully
           content:
             application/json:
               schema:
@@ -752,8 +752,6 @@ paths:
           description: Unauthorized
         '403':
           description: Forbidden - insufficient permissions
-        '409':
-          description: Conflict - role with this name already exists
 
   /resources/assign-role:
     post:
@@ -766,10 +764,10 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AssignUserToResourceRole'
+              $ref: '#/components/schemas/AssignUserResourceRole'
       responses:
         '201':
-          description: User assigned to resource role successfully
+          description: Role assigned successfully
           content:
             application/json:
               schema:
@@ -780,15 +778,11 @@ paths:
           description: Unauthorized
         '403':
           description: Forbidden - insufficient permissions
-        '404':
-          description: Resource role or user not found
-        '409':
-          description: Conflict - user already has a role for this resource
 
   /resources/revoke-role:
     post:
       tags: [Resources]
-      summary: Remove a user from a resource role
+      summary: Revoke a user's resource role
       security:
         - bearerAuth: []
       requestBody:
@@ -798,18 +792,14 @@ paths:
             schema:
               $ref: '#/components/schemas/RevokeUserResourceRole'
       responses:
-        '200':
-          description: User removed from resource role successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Success'
+        '204':
+          description: Role revoked successfully
+        '400':
+          description: Bad request - validation error
         '401':
           description: Unauthorized
         '403':
           description: Forbidden - insufficient permissions
-        '404':
-          description: User resource role assignment not found
 
   /resources/{resourceId}/test-read:
     get:
@@ -819,8 +809,8 @@ paths:
       security:
         - bearerAuth: []
       parameters:
-        - name: resourceId
-          in: path
+        - in: path
+          name: resourceId
           required: true
           schema:
             type: string
@@ -852,8 +842,8 @@ paths:
       security:
         - bearerAuth: []
       parameters:
-        - name: resourceId
-          in: path
+        - in: path
+          name: resourceId
           required: true
           schema:
             type: string
@@ -880,13 +870,13 @@ paths:
   /resources/{resourceId}/user-role:
     get:
       tags: [Resources]
-      summary: Get the authenticated user's role for a specific resource
-      description: Retrieve the role of the authenticated user for a specific resource. Returns the resource-specific role if assigned, otherwise returns the user's global role. Super admins always return their super admin status.
+      summary: Get the role of the authenticated user for a specific resource
+      description: Retrieve the role assigned to the currently authenticated user for a specific resource
       security:
         - bearerAuth: []
       parameters:
-        - name: resourceId
-          in: path
+        - in: path
+          name: resourceId
           required: true
           schema:
             type: string
@@ -899,28 +889,22 @@ paths:
               schema:
                 $ref: '#/components/schemas/UserResourceRoleResponse'
         '401':
-          description: Unauthorized - authentication required
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          description: Unauthorized
         '404':
-          description: User has no role for this resource
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          description: No role found for this user on the specified resource
+        '500':
+          description: Internal server error
 
   /resources/{userId}:
     get:
       tags: [Resources]
       summary: Get all resources and roles assigned to a specific user
-      description: Retrieve all resources and their corresponding roles assigned to a user. Super admins can access any user's data, while regular users can only access their own data. Returns resource-specific roles only (excludes global roles).
+      description: Retrieve all resources and their corresponding roles assigned to a user. Super admins can access any user's data, while regular users can only access their own data.
       security:
         - bearerAuth: []
       parameters:
-        - name: userId
-          in: path
+        - in: path
+          name: userId
           required: true
           schema:
             type: string
@@ -938,25 +922,93 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/UserResourceRoleAssignment'
-                    description: Array of resource-role assignments for the user
         '401':
-          description: Unauthorized - authentication required
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          description: Unauthorized
         '403':
           description: Forbidden - regular users can only access their own data
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
         '404':
           description: User not found
+        '500':
+          description: Internal server error
+
+  /resources/user-roles:
+    post:
+      tags: [Resources]
+      summary: Get resource roles for authenticated user given a list of resourceIds
+      description: |
+        Retrieve the roles assigned to the currently authenticated user for a list of specified resources.
+        
+        **Authentication Required**: This endpoint requires a valid JWT Bearer token.
+        
+        **Authorization**:
+        - Regular users: Returns only roles for resources they have access to
+        - Super admins: Returns all requested resource roles
+        
+        **Request Body**: Must contain an array of resource IDs to query
+        
+        **Response**: Returns an array of resource-role assignments for the authenticated user
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GetResourceRolesRequest'
+            example:
+              resources: ["cmga8vhx10000n3q4mqfdvqea", "cmga8vhx40001n3q449tq1qz8"]
+      responses:
+        '200':
+          description: Resource roles retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetResourceRolesResponse'
+              example:
+                resourceRoles:
+                  - resourceId: "cmga8vhx10000n3q4mqfdvqea"
+                    roleName: "STAFF"
+                    roleId: "cmga8vhx50002n3q4abc123def"
+                  - resourceId: "cmga8vhx40001n3q449tq1qz8"
+                    roleName: "ADMIN"
+                    roleId: "cmga8vhx60003n3q4def456ghi"
+        '400':
+          description: Bad request - invalid request body or validation errors
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              examples:
+                missing_resources:
+                  summary: Missing resources field
+                  value:
+                    message: "resources is required"
+                empty_array:
+                  summary: Empty resources array
+                  value:
+                    message: "At least one resource ID is required"
+                invalid_type:
+                  summary: Invalid resources type
+                  value:
+                    message: "resources must be an array"
+        '401':
+          description: Unauthorized - missing or invalid JWT token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "Authentication required"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "Failed to get resource roles"
+
+
 
   # Configuration Endpoints
   /config/permissions:
@@ -1768,6 +1820,44 @@ components:
         reason:
           type: string
           description: Reason for permission grant (only present for super admins)
+
+    GetResourceRolesRequest:
+      type: object
+      required:
+        - resources
+      properties:
+        resources:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          description: Array of resource IDs to get roles for
+          example: ["resource1", "resource2"]
+
+    GetResourceRolesResponse:
+      type: object
+      properties:
+        resourceRoles:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResourceRoleAssignment'
+          description: Array of resource-role assignments for the authenticated user
+
+    ResourceRoleAssignment:
+      type: object
+      properties:
+        resourceId:
+          type: string
+          description: The unique identifier of the resource
+          example: "resource1"
+        roleName:
+          type: string
+          description: The name of the role assigned to the user for this resource
+          example: "STAFF"
+        roleId:
+          type: string
+          description: The unique identifier of the role
+          example: "role123"
 
     # Pagination schemas
     PaginationQuery:

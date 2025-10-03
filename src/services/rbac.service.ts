@@ -386,3 +386,50 @@ export const getUserResourcesAndRoles = async (userId: string): Promise<{ resour
 
   return { resources };
 };
+
+/**
+ * Get resource roles for authenticated user given a list of resourceIds
+ */
+export const getResourceRoles = async (userId: string, resourceIds: string[]): Promise<{ resourceRoles: Array<{ resourceId: string; roleName: string; roleId: string }> }> => {
+  // Check if user is super admin
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { isSuperAdmin: true }
+  });
+
+  if (user?.isSuperAdmin) {
+    // Super admin has access to all requested resources - return super admin roles for all
+    const result = [];
+    for (const resourceId of resourceIds) {
+      result.push({
+        resourceId,
+        roleName: 'Super Admin',
+        roleId: 'super-admin-role',
+      });
+    }
+
+    return { resourceRoles: result };
+  }
+
+  // For regular users, get their roles only for resources they have access to
+  const userResourceRoles = await prisma.userResourceRole.findMany({
+    where: {
+      userId,
+      resourceId: {
+        in: resourceIds,
+      },
+    },
+    include: {
+      role: true,
+    },
+  });
+
+  const resourceRoles = userResourceRoles.map(userResourceRole => ({
+    resourceId: userResourceRole.resourceId!,
+    roleName: userResourceRole.role.name,
+    roleId: userResourceRole.role.id,
+  }));
+
+  return { resourceRoles };
+};
+

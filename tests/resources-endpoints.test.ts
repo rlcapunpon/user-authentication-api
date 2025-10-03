@@ -697,4 +697,178 @@ describe('Resources Endpoints', () => {
       expect(response.body.message).toContain('Insufficient permissions');
     });
   });
+
+  describe('POST /api/resources/user-roles', () => {
+    it('should return resource roles for authenticated user given a list of resourceIds', async () => {
+      const requestBody = {
+        resources: [resource1Id, resource2Id],
+      };
+
+      const response = await request(app)
+        .post('/api/resources/user-roles')
+        .set('Authorization', `Bearer ${testUserToken}`)
+        .send(requestBody);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('resourceRoles');
+      expect(Array.isArray(response.body.resourceRoles)).toBe(true);
+      expect(response.body.resourceRoles.length).toBe(2);
+
+      // Check structure of each resource role
+      response.body.resourceRoles.forEach((resourceRole: any) => {
+        expect(resourceRole).toHaveProperty('resourceId');
+        expect(resourceRole).toHaveProperty('roleName');
+        expect(resourceRole).toHaveProperty('roleId');
+        expect([resource1Id, resource2Id]).toContain(resourceRole.resourceId);
+      });
+
+      // Verify specific roles
+      const resource1Role = response.body.resourceRoles.find((r: any) => r.resourceId === resource1Id);
+      const resource2Role = response.body.resourceRoles.find((r: any) => r.resourceId === resource2Id);
+
+      expect(resource1Role).toBeDefined();
+      expect(resource2Role).toBeDefined();
+      expect(resource1Role.roleName).toBe('Resource 1 Access Role');
+      expect(resource2Role.roleName).toBe('Resource 2 Access Role');
+    });
+
+    it('should return empty array when user has no roles for the requested resources', async () => {
+      const requestBody = {
+        resources: [resource3Id], // Test user has no access to resource3
+      };
+
+      const response = await request(app)
+        .post('/api/resources/user-roles')
+        .set('Authorization', `Bearer ${testUserToken}`)
+        .send(requestBody);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('resourceRoles');
+      expect(Array.isArray(response.body.resourceRoles)).toBe(true);
+      expect(response.body.resourceRoles.length).toBe(0);
+    });
+
+    it('should return roles only for resources the user has access to', async () => {
+      const requestBody = {
+        resources: [resource1Id, resource2Id, resource3Id], // Mix of accessible and non-accessible resources
+      };
+
+      const response = await request(app)
+        .post('/api/resources/user-roles')
+        .set('Authorization', `Bearer ${testUserToken}`)
+        .send(requestBody);
+
+      expect(response.status).toBe(200);
+      expect(response.body.resourceRoles.length).toBe(2); // Only resource1 and resource2
+
+      const returnedResourceIds = response.body.resourceRoles.map((r: any) => r.resourceId);
+      expect(returnedResourceIds).toContain(resource1Id);
+      expect(returnedResourceIds).toContain(resource2Id);
+      expect(returnedResourceIds).not.toContain(resource3Id);
+    });
+
+    it('should return all requested resource roles for super admin user', async () => {
+      const requestBody = {
+        resources: [resource1Id, resource2Id, resource3Id],
+      };
+
+      const response = await request(app)
+        .post('/api/resources/user-roles')
+        .set('Authorization', `Bearer ${adminUserToken}`)
+        .send(requestBody);
+
+      expect(response.status).toBe(200);
+      expect(response.body.resourceRoles.length).toBe(3); // Admin should see all resources
+
+      const returnedResourceIds = response.body.resourceRoles.map((r: any) => r.resourceId);
+      expect(returnedResourceIds).toContain(resource1Id);
+      expect(returnedResourceIds).toContain(resource2Id);
+      expect(returnedResourceIds).toContain(resource3Id);
+
+      // Super admin should have virtual super admin roles
+      response.body.resourceRoles.forEach((resourceRole: any) => {
+        expect(resourceRole.roleName).toBe('Super Admin');
+        expect(resourceRole.roleId).toBe('super-admin-role');
+      });
+    });
+
+    it('should handle empty resources array', async () => {
+      const requestBody = {
+        resources: [],
+      };
+
+      const response = await request(app)
+        .post('/api/resources/user-roles')
+        .set('Authorization', `Bearer ${testUserToken}`)
+        .send(requestBody);
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toContain('At least one resource ID is required');
+    });
+
+    it('should handle non-existent resource IDs', async () => {
+      const requestBody = {
+        resources: ['non-existent-id-1', 'non-existent-id-2'],
+      };
+
+      const response = await request(app)
+        .post('/api/resources/user-roles')
+        .set('Authorization', `Bearer ${testUserToken}`)
+        .send(requestBody);
+
+      expect(response.status).toBe(200);
+      expect(response.body.resourceRoles).toEqual([]);
+    });
+
+    it('should fail without authentication', async () => {
+      const requestBody = {
+        resources: [resource1Id],
+      };
+
+      const response = await request(app)
+        .post('/api/resources/user-roles')
+        .send(requestBody);
+
+      expect(response.status).toBe(401);
+      expect(response.body.message).toBe('No token provided');
+    });
+
+    it('should fail with invalid token', async () => {
+      const requestBody = {
+        resources: [resource1Id],
+      };
+
+      const response = await request(app)
+        .post('/api/resources/user-roles')
+        .set('Authorization', 'Bearer invalid-token')
+        .send(requestBody);
+
+      expect(response.status).toBe(401);
+      expect(response.body.message).toBe('Invalid token');
+    });
+
+    it('should fail with invalid request body - missing resources field', async () => {
+      const response = await request(app)
+        .post('/api/resources/user-roles')
+        .set('Authorization', `Bearer ${testUserToken}`)
+        .send({});
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toContain('resources is required');
+    });
+
+    it('should fail with invalid request body - resources not an array', async () => {
+      const requestBody = {
+        resources: 'not-an-array',
+      };
+
+      const response = await request(app)
+        .post('/api/resources/user-roles')
+        .set('Authorization', `Bearer ${testUserToken}`)
+        .send(requestBody);
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toContain('resources must be an array');
+    });
+  });
 });
