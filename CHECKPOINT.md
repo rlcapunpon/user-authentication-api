@@ -302,3 +302,15 @@
 - **Technical Details**: Database query enhanced with resource table join; response mapping updated to include resourceName; test user setup modified to ensure role assignment for proper resource inclusion
 
 **Status**: ✅ Complete - GET /me endpoint updated to include resourceName in resources array following strict TDD methodology.
+
+## Step 10-03-2025.STEP12 - Handling Deactivated Users During Login
+- **Test Implementation**: Created comprehensive test case in `tests/auth-endpoints.test.ts` for deactivated user login failure (TDD approach)
+- **Service Layer**: Updated `login` function in `src/services/auth.service.ts` to provide clear error messages distinguishing between unverified users and deactivated verified users
+- **Implementation Details**: 
+  - For unverified users (verificationStatus === 'unverified'): Returns "User account is not active and unverified"
+  - For deactivated verified users: Returns "Account is deactivated"
+  - Simplified logic to check verification status only when user.isActive is false
+- **Validation Results**: All 259 tests passing, TypeScript compilation successful, deactivated users properly blocked from login with appropriate error messages
+- **Technical Details**: Enhanced error handling provides clear feedback for different inactive user scenarios; maintains security by preventing deactivated user access while providing informative error messages
+
+**Status**: ✅ Complete - Deactivated user handling during login implemented and tested following strict TDD methodology.

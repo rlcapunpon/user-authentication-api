@@ -169,6 +169,47 @@ describe('Authentication Endpoints', () => {
 
       expect(response.body).toHaveProperty('message');
     });
+
+    it('should fail login for deactivated user', async () => {
+      // Create a deactivated user
+      const deactivatedEmail = 'deactivated@example.com';
+      const deactivatedPassword = 'testpassword123';
+      const hashedPassword = await hashPassword(deactivatedPassword);
+      
+      const deactivatedUser = await (prisma as any).user.create({
+        data: {
+          email: deactivatedEmail,
+          isActive: false, // User is deactivated
+          isSuperAdmin: false,
+          credential: {
+            create: {
+              passwordHash: hashedPassword,
+            },
+          },
+          verification: {
+            create: {
+              isEmailVerified: true, // User is verified but deactivated
+              verificationStatus: 'verified',
+              userStatus: 'active',
+            },
+          },
+        },
+      });
+
+      const response = await request(app)
+        .post('/api/auth/login')
+        .send({
+          email: deactivatedEmail,
+          password: deactivatedPassword,
+        })
+        .expect(401);
+
+      expect(response.body).toHaveProperty('message');
+      expect(response.body.message).toBe('Account is deactivated');
+
+      // Cleanup
+      await (prisma as any).user.delete({ where: { id: deactivatedUser.id } });
+    });
   });
 
   describe('GET /api/auth/me', () => {

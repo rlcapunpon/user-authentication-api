@@ -105,20 +105,13 @@ export const login = async (email: string, password: string, ipAddress?: string,
         where: { userId: user.id },
         select: {
           verificationStatus: true,
-          userStatus: true,
         },
       });
 
       let errorMessage = 'Account is deactivated';
 
-      if (userVerification) {
-        if (userVerification.verificationStatus === 'unverified') {
-          errorMessage = 'User account is not active and unverified';
-        } else if (userVerification.verificationStatus === 'verified') {
-          errorMessage = `User account is ${userVerification.userStatus}`;
-        } else if (userVerification.verificationStatus === 'failed') {
-          errorMessage = 'User account verification failed';
-        }
+      if (userVerification && userVerification.verificationStatus === 'unverified') {
+        errorMessage = 'User account is not active and unverified';
       }
 
       console.warn('Login failed - user inactive:', {
@@ -127,7 +120,6 @@ export const login = async (email: string, password: string, ipAddress?: string,
         timestamp: new Date().toISOString(),
         reason: errorMessage,
         verificationStatus: userVerification?.verificationStatus,
-        userStatus: userVerification?.userStatus,
       });
       throw new Error(errorMessage);
     }
