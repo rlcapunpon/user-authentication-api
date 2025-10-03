@@ -380,7 +380,7 @@ describe('Password Reset Endpoints', () => {
       });
     });
 
-    it('should handle password reset request for non-existent user (returns success to prevent email enumeration)', async () => {
+    it('should return 404 for non-existent user', async () => {
       const fakeEmail = 'truly-nonexistent@example.com';
 
       // Clear any previous mock calls
@@ -390,8 +390,8 @@ describe('Password Reset Endpoints', () => {
         .post('/api/user/auth/reset-password/request/email')
         .send({ email: fakeEmail });
 
-      expect(response.status).toBe(200);
-      expect(response.body.message).toContain('If an account with that email exists');
+      expect(response.status).toBe(404);
+      expect(response.body.message).toContain('User not found');
       // Email should not be sent for non-existent users
       expect(mockSendPasswordResetEmail).not.toHaveBeenCalled();
     });

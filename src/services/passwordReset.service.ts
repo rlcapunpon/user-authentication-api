@@ -16,26 +16,26 @@ export interface PasswordResetData {
   newPasswordConfirmation: string;
 }
 
-export const requestPasswordReset = async (email: string): Promise<{ success: boolean; message: string }> => {
+export const requestPasswordReset = async (email: string): Promise<{ success: boolean; message: string; userNotFound?: boolean }> => {
   try {
     // Find user by email
     const user = await prisma.user.findUnique({
       where: { email },
       include: { passwordResetRequests: true },
-    });
+    }) as any;
 
     if (!user) {
-      // Return success to prevent email enumeration attacks
       return {
-        success: true,
-        message: 'If an account with that email exists, a password reset link has been sent.',
+        success: false,
+        message: 'User not found',
+        userNotFound: true,
       };
     }
 
     // Check if there's a recent reset request (within 30 minutes)
     const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
     const recentRequest = user.passwordResetRequests.find(
-      (request) => request.lastRequestDate > thirtyMinutesAgo
+      (request: { lastRequestDate: Date }) => request.lastRequestDate > thirtyMinutesAgo
     );
 
     if (recentRequest) {

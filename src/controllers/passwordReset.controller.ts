@@ -12,7 +12,8 @@ export const requestPasswordResetController = async (req: Request, res: Response
     const result = await requestPasswordReset(email);
 
     if (!result.success) {
-      return res.status(result.message.includes('Please wait') ? 429 : 400).json({
+      const statusCode = result.userNotFound ? 404 : (result.message.includes('Please wait') ? 429 : 400);
+      return res.status(statusCode).json({
         message: result.message
       });
     }
