@@ -293,3 +293,12 @@
 - **Technical Details**: Content updated in both HTML (formatted with strong tags) and plain text versions; tests validate presence of all required content elements
 
 **Status**: ✅ Complete - Email verification content updated with comprehensive WindBooks feature descriptions following strict TDD methodology.
+
+## Step 10-03-2025.STEP11 - Update /me Endpoint to Include resourceName
+- **Test Implementation**: Created failing test in `tests/auth-endpoints.test.ts` for GET /me endpoint to verify resourceName inclusion in resources array (TDD approach)
+- **Service Layer**: Enhanced `getMe` function in `src/services/auth.service.ts` to include resource name in database query and response mapping by joining with Resource table
+- **Implementation Details**: Updated Prisma query to include resource name via join, modified response mapping to include resourceName field in each resource object, updated test setup to assign SUPERADMIN role to test user
+- **Validation Results**: All 258 tests passing, TypeScript compilation successful, /me endpoint now returns resourceName in resources array alongside existing roleName and permissions
+- **Technical Details**: Database query enhanced with resource table join; response mapping updated to include resourceName; test user setup modified to ensure role assignment for proper resource inclusion
+
+**Status**: ✅ Complete - GET /me endpoint updated to include resourceName in resources array following strict TDD methodology.

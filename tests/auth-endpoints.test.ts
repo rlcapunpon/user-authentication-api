@@ -172,6 +172,47 @@ describe('Authentication Endpoints', () => {
   });
 
   describe('GET /api/auth/me', () => {
+    beforeAll(async () => {
+      // Ensure we have a valid token for testing
+      if (!testUserToken) {
+        const loginResponse = await request(app)
+          .post('/api/auth/login')
+          .send({
+            email: testEmail,
+            password: testPassword,
+          })
+          .expect(200);
+        
+        testUserToken = loginResponse.body.accessToken;
+      }
+
+      // Assign a role to the test user for testing resourceName inclusion
+      const testRole = await (prisma as any).role.findFirst({
+        where: { name: 'SUPERADMIN' },
+      });
+      const windbooksAppResource = await (prisma as any).resource.findFirst({
+        where: { name: 'WINDBOOKS_APP' },
+      });
+
+      if (testRole && windbooksAppResource) {
+        await (prisma as any).userResourceRole.upsert({
+          where: {
+            userId_roleId_resourceId: {
+              userId: testUserId,
+              roleId: testRole.id,
+              resourceId: windbooksAppResource.id,
+            },
+          },
+          update: {},
+          create: {
+            userId: testUserId,
+            roleId: testRole.id,
+            resourceId: windbooksAppResource.id,
+          },
+        });
+      }
+    });
+
     it('should return user profile with valid token', async () => {
       const response = await request(app)
         .get('/api/auth/me')
@@ -180,12 +221,19 @@ describe('Authentication Endpoints', () => {
 
       expect(response.body).toHaveProperty('id', testUserId);
       expect(response.body).toHaveProperty('email', testEmail);
-      expect(response.body).toHaveProperty('isSuperAdmin', false);
+      expect(response.body).toHaveProperty('isSuperAdmin', true); // User now has SUPERADMIN role
       expect(response.body).toHaveProperty('isActive', true);
       expect(response.body).toHaveProperty('createdAt');
       expect(response.body).toHaveProperty('updatedAt');
       expect(response.body).toHaveProperty('resources');
       expect(Array.isArray(response.body.resources)).toBe(true);
+      
+      // Check that resources array includes resourceName
+      if (response.body.resources.length > 0) {
+        expect(response.body.resources[0]).toHaveProperty('resourceId');
+        expect(response.body.resources[0]).toHaveProperty('role');
+        expect(response.body.resources[0]).toHaveProperty('resourceName');
+      }
       
       // Should not include sensitive data like passwordHash
       expect(response.body).not.toHaveProperty('passwordHash');

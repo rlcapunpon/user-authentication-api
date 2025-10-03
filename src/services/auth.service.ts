@@ -269,6 +269,9 @@ export const getMe = async (userId: string) => {
             resourceId: true,
             role: {
               select: { name: true }
+            },
+            resource: {
+              select: { name: true }
             }
           }
         }
@@ -325,7 +328,8 @@ export const getMe = async (userId: string) => {
       } : null,
       resources: me.resourceRoles.map((rr: any) => ({
         resourceId: rr.resourceId,
-        role: rr.role.name
+        role: rr.role.name,
+        resourceName: rr.resource.name
       }))
     };
 
