@@ -140,3 +140,7 @@ export const passwordLastUpdateResponseSchema = z.object({
   updated_by: z.string().nullable(),
   how_many: z.number(),
 });
+
+export const lastLoginResponseSchema = z.object({
+  last_login: z.string().nullable(),
+});

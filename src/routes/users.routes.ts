@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { listUsers, getUser, createUser, updateUserSuperAdmin, assignUserResourceRole, revokeUserResourceRole, deactivateUser, activateUser, deleteUser, listUsersV2, updateUserPassword, getUserPasswordUpdateHistory } from '../controllers/user.controller';
+import { listUsers, getUser, createUser, updateUserSuperAdmin, assignUserResourceRole, revokeUserResourceRole, deactivateUser, activateUser, deleteUser, listUsersV2, updateUserPassword, getUserPasswordUpdateHistory, getLastLogin } from '../controllers/user.controller';
 import { authGuard } from '../middleware/auth.middleware';
 import { rbacGuard, requireSuperAdmin } from '../middleware/rbac.middleware';
 import { validate } from '../middleware/validate';
@@ -68,6 +68,33 @@ router.get('/', rbacGuard(['user:read']), listUsers);
  *         description: Forbidden
  */
 router.get('/v2', rbacGuard(['user:read']), validate(paginationQuerySchema), listUsersV2);
+
+/**
+ * @swagger
+ * /user/last-login:
+ *   get:
+ *     summary: Get user's last login timestamp
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Last login timestamp retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 last_login:
+ *                   type: string
+ *                   nullable: true
+ *                   example: "10/03/2025 14:22:30"
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/last-login', authGuard, getLastLogin);
 
 /**
  * @swagger

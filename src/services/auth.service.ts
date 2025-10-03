@@ -69,7 +69,7 @@ export const register = async (email: string, password: string) => {
   }
 };
 
-export const login = async (email: string, password: string) => {
+export const login = async (email: string, password: string, ipAddress?: string, metadata?: any) => {
   try {
     // Log login attempt
     console.log('Login attempt:', {
@@ -147,6 +147,34 @@ export const login = async (email: string, password: string) => {
 
     const userWithRoles = await findUserById(user.id);
     const { accessToken, refreshToken } = await generateAuthTokens(userWithRoles as UserWithRoles);
+
+    // Record login history
+    try {
+      await (prisma as any).userLoginHistory.create({
+        data: {
+          userId: user.id,
+          lastLogin: new Date(),
+          ipAddress: ipAddress || 'unknown',
+          metadata: metadata || {},
+        },
+      });
+
+      console.log('Login history recorded:', {
+        userId: user.id,
+        email,
+        ipAddress,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (historyError) {
+      // Log the error but don't fail the login
+      console.error('Failed to record login history:', {
+        userId: user.id,
+        email,
+        ipAddress,
+        error: historyError instanceof Error ? historyError.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+      });
+    }
 
     console.log('Login successful:', {
       email,

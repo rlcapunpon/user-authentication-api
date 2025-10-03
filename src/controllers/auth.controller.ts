@@ -87,7 +87,16 @@ export const login = async (req: Request, res: Response) => {
   });
 
   try {
-    const tokens = await authService.login(email, password);
+    // Extract real IP address (check forwarded headers for proxies)
+    const ipAddress = req.get('X-Forwarded-For')?.split(',')[0]?.trim() ||
+                     req.get('X-Real-IP') ||
+                     req.ip ||
+                     'unknown';
+
+    const tokens = await authService.login(email, password, ipAddress, {
+      userAgent: req.get('User-Agent'),
+      forwardedFor: req.get('X-Forwarded-For'),
+    });
 
     logger.debug({
       msg: 'Login successful',

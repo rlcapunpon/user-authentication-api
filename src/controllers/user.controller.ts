@@ -178,3 +178,13 @@ export const getUserPasswordUpdateHistory = async (req: Request, res: Response) 
     handleUnknownError(error, res, 500);
   }
 };
+
+export const getLastLogin = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.userId;
+    const result = await userService.getLastLogin(userId);
+    res.json(result);
+  } catch (error) {
+    handleUnknownError(error, res, 500);
+  }
+};

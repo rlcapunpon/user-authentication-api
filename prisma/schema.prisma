@@ -22,6 +22,7 @@ model User {
   verification  UserVerification?
   emailCodes    EmailVerificationCode[]
   passwordUpdates UserPasswordUpdate[]
+  loginHistory UserLoginHistory[]
 }
 
 model UserDetails {
@@ -134,6 +135,17 @@ model UserPasswordUpdate {
   lastUpdate DateTime @default(now())
   updatedBy  String
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model UserLoginHistory {
+  id        String   @id @default(uuid())
+  userId    String
+  lastLogin DateTime @default(now())
+  ipAddress String
+  metadata  Json?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }

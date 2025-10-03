@@ -715,6 +715,33 @@ paths:
         '404':
           description: User not found
 
+  /user/last-login:
+    get:
+      tags: [Users]
+      summary: Get user's last login timestamp
+      description: |
+        Retrieve the last login timestamp for the authenticated user.
+        
+        **Authorization Rules:**
+        - Users can only view their own last login timestamp
+        
+        **Response:**
+        - Returns last login timestamp in MM/DD/YYYY HH:MM:SS format
+        - Returns null if the user has never logged in
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Last login timestamp retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LastLoginResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - insufficient permissions
+
   # Global RBAC Endpoints
   /roles:
     get:
@@ -1613,6 +1640,15 @@ components:
           type: integer
           description: Total number of password updates for this user
           example: 1
+
+    LastLoginResponse:
+      type: object
+      properties:
+        last_login:
+          type: string
+          nullable: true
+          description: Date and time of the last login in MM/DD/YYYY HH:MM:SS format
+          example: "10/03/2025 14:22:30"
 
     UserDetails:
       type: object

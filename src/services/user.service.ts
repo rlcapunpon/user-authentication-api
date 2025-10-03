@@ -353,3 +353,27 @@ export const getUserPasswordUpdateHistory = async (userId: string) => {
     how_many: updates.length,
   };
 };
+
+export const getLastLogin = async (userId: string) => {
+  const lastLoginRecord = await (prisma as any).userLoginHistory.findFirst({
+    where: { userId },
+    orderBy: { lastLogin: 'desc' },
+  });
+
+  if (!lastLoginRecord) {
+    return { last_login: null };
+  }
+
+  // Format the date as mm/dd/yyyy hh:mm:ss (24-hour format)
+  const date = lastLoginRecord.lastLogin;
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const year = date.getFullYear();
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+
+  const formattedDate = `${month}/${day}/${year} ${hours}:${minutes}:${seconds}`;
+
+  return { last_login: formattedDate };
+};
