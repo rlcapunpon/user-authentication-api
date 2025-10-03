@@ -3,7 +3,7 @@ import { requestPasswordReset, resetPasswordWithUserId } from '../services/passw
 
 export const requestPasswordResetController = async (req: Request, res: Response) => {
   try {
-    const { email } = req.params;
+    const { email } = req.body;
 
     if (!email || typeof email !== 'string') {
       return res.status(400).json({ message: 'Email is required' });

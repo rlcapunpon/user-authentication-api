@@ -353,13 +353,13 @@ describe('Password Reset Endpoints', () => {
     await (prisma as any).resource.deleteMany({});
   });
 
-  describe('POST /api/user/auth/reset-password/request/{email}', () => {
+  describe('POST /api/user/auth/reset-password/request/email', () => {
     it('should send password reset email for existing user', async () => {
       (mockSendPasswordResetEmail as jest.Mock).mockClear();
 
       const response = await request(app)
-        .post(`/api/user/auth/reset-password/request/${testUserEmail}`)
-        .send();
+        .post('/api/user/auth/reset-password/request/email')
+        .send({ email: testUserEmail });
 
       expect(response.status).toBe(200);
       expect(response.body.message).toContain('Password reset email sent');
@@ -387,8 +387,8 @@ describe('Password Reset Endpoints', () => {
       (mockSendPasswordResetEmail as jest.Mock).mockClear();
 
       const response = await request(app)
-        .post(`/api/user/auth/reset-password/request/${fakeEmail}`)
-        .send();
+        .post('/api/user/auth/reset-password/request/email')
+        .send({ email: fakeEmail });
 
       expect(response.status).toBe(200);
       expect(response.body.message).toContain('If an account with that email exists');
@@ -418,8 +418,8 @@ describe('Password Reset Endpoints', () => {
 
       // First make a successful request
       const firstResponse = await request(app)
-        .post(`/api/user/auth/reset-password/request/${rateLimitEmail}`)
-        .send();
+        .post('/api/user/auth/reset-password/request/email')
+        .send({ email: rateLimitEmail });
       expect(firstResponse.status).toBe(200);
 
       // Clear the mock to check the second call
@@ -427,8 +427,8 @@ describe('Password Reset Endpoints', () => {
 
       // Try to make another request immediately (should be rate limited)
       const secondResponse = await request(app)
-        .post(`/api/user/auth/reset-password/request/${rateLimitEmail}`)
-        .send();
+        .post('/api/user/auth/reset-password/request/email')
+        .send({ email: rateLimitEmail });
 
       expect(secondResponse.status).toBe(429);
       expect(secondResponse.body.message).toContain('Please wait');
@@ -462,8 +462,8 @@ describe('Password Reset Endpoints', () => {
 
       // First make a successful request
       const firstResponse = await request(app)
-        .post(`/api/user/auth/reset-password/request/${timeTestEmail}`)
-        .send();
+        .post('/api/user/auth/reset-password/request/email')
+        .send({ email: timeTestEmail });
       expect(firstResponse.status).toBe(200);
 
       // Update the last request to be more than 30 minutes ago
@@ -476,8 +476,8 @@ describe('Password Reset Endpoints', () => {
       (mockSendPasswordResetEmail as jest.Mock).mockClear();
 
       const response = await request(app)
-        .post(`/api/user/auth/reset-password/request/${timeTestEmail}`)
-        .send();
+        .post('/api/user/auth/reset-password/request/email')
+        .send({ email: timeTestEmail });
 
       expect(response.status).toBe(200);
       expect(mockSendPasswordResetEmail).toHaveBeenCalledTimes(1);
