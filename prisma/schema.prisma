@@ -52,6 +52,7 @@ model Resource {
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
   userRoles   UserResourceRole[]
+  status      ResourceStatus?
 }
 
 model Role {
@@ -109,4 +110,19 @@ model EmailVerificationCode {
   isUsed           Boolean   @default(false)
   createdAt        DateTime  @default(now())
   user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum ResourceStatusEnum {
+  ACTIVE
+  INACTIVE
+  DELETED
+}
+
+model ResourceStatus {
+  id         String             @id @default(cuid())
+  resourceId String             @unique
+  status     ResourceStatusEnum @default(ACTIVE)
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+  resource   Resource           @relation(fields: [resourceId], references: [id], onDelete: Cascade)
 }

@@ -1010,6 +1010,35 @@ paths:
 
 
 
+  /resources/{id}:
+    delete:
+      tags: [Resources]
+      summary: Soft delete a resource
+      description: Mark a resource as deleted (soft delete). The resource will no longer appear in GET requests but remains in the database for audit purposes.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: The unique identifier of the resource to delete
+      responses:
+        '204':
+          description: Resource successfully marked as deleted
+        '400':
+          description: Bad request - resource is already deleted
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - insufficient permissions
+        '404':
+          description: Resource not found
+        '500':
+          description: Internal server error
+
+
   # Configuration Endpoints
   /config/permissions:
     get:
@@ -1590,6 +1619,28 @@ components:
           type: string
           format: date-time
           description: Last update timestamp
+
+    ResourceStatus:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Resource status record identifier
+        resourceId:
+          type: string
+          description: The resource this status applies to
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE, DELETED]
+          description: The current status of the resource
+        createdAt:
+          type: string
+          format: date-time
+          description: Status record creation timestamp
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last status update timestamp
 
     CreateResourceRequest:
       type: object

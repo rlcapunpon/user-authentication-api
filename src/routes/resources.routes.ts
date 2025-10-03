@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { authGuard } from '../middleware/auth.middleware';
 import { rbacGuard, authorizeResource } from '../middleware/rbac.middleware';
 import { validate } from '../middleware/validate';
-import { getResources, createResource, createRole, getUserRoleForResource, getResourcesV2, getUserResourcesAndRoles, getResourceRoles } from '../controllers/rbac.controller';
+import { getResources, createResource, createRole, getUserRoleForResource, getResourcesV2, getUserResourcesAndRoles, getResourceRoles, deleteResource } from '../controllers/rbac.controller';
 import { assignUserResourceRole, revokeUserResourceRole } from '../controllers/user.controller';
 import { 
   createResourceSchema,
@@ -457,5 +457,37 @@ router.get('/:userId', authGuard, getUserResourcesAndRoles);
  *         description: Internal server error
  */
 router.post('/user-roles', authGuard, validate(getResourceRolesSchema), getResourceRoles);
+
+/**
+ * @swagger
+ * /resources/{id}:
+ *   delete:
+ *     summary: Soft delete a resource
+ *     description: Mark a resource as deleted (soft delete). The resource will no longer appear in GET requests but remains in the database.
+ *     tags: [Resources]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The unique identifier of the resource to delete
+ *     responses:
+ *       204:
+ *         description: Resource successfully marked as deleted
+ *       400:
+ *         description: Bad request - resource is already deleted
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - insufficient permissions
+ *       404:
+ *         description: Resource not found
+ *       500:
+ *         description: Internal server error
+ */
+router.delete('/:id', authGuard, rbacGuard(['resource:delete']), deleteResource);
 
 export default router;

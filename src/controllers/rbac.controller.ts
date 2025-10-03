@@ -272,3 +272,29 @@ export const getResourceRoles = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * Soft delete a resource by marking it as DELETED in ResourceStatus
+ */
+export const deleteResource = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    await rbacService.softDeleteResource(id);
+
+    res.status(204).send(); // No content response for successful deletion
+  } catch (error) {
+    console.error('Error deleting resource:', error);
+
+    if (error instanceof Error) {
+      if (error.message === 'Resource not found') {
+        return res.status(404).json({ message: 'Resource not found' });
+      }
+      if (error.message === 'Resource is already deleted') {
+        return res.status(400).json({ message: 'Resource is already deleted' });
+      }
+    }
+
+    res.status(500).json({ message: 'Failed to delete resource' });
+  }
+};
+

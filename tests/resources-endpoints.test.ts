@@ -871,4 +871,116 @@ describe('Resources Endpoints', () => {
       expect(response.body.message).toContain('resources must be an array');
     });
   });
+
+  describe('DELETE /api/resources/:id', () => {
+    it('should soft delete a resource for super admin user', async () => {
+      const response = await request(app)
+        .delete(`/api/resources/${resource1Id}`)
+        .set('Authorization', `Bearer ${adminUserToken}`);
+
+      expect(response.status).toBe(204);
+
+      // Verify the resource is marked as deleted in ResourceStatus
+      const resourceStatus = await (prisma as any).resourceStatus.findUnique({
+        where: { resourceId: resource1Id },
+      });
+      expect(resourceStatus).toBeTruthy();
+      expect(resourceStatus.status).toBe('DELETED');
+
+      // Verify the resource is not returned in GET requests
+      const getResponse = await request(app)
+        .get('/api/resources')
+        .set('Authorization', `Bearer ${adminUserToken}`);
+
+      expect(getResponse.status).toBe(200);
+      const resourceIds = getResponse.body.map((r: any) => r.id);
+      expect(resourceIds).not.toContain(resource1Id);
+    });
+
+    it('should fail for regular user without resource:delete permission', async () => {
+      const response = await request(app)
+        .delete(`/api/resources/${resource2Id}`)
+        .set('Authorization', `Bearer ${testUserToken}`);
+
+      expect(response.status).toBe(403);
+      expect(response.body.message).toContain('Insufficient permissions');
+    });
+
+    it('should fail when trying to delete non-existent resource', async () => {
+      const fakeResourceId = '00000000-0000-0000-0000-000000000000';
+      const response = await request(app)
+        .delete(`/api/resources/${fakeResourceId}`)
+        .set('Authorization', `Bearer ${adminUserToken}`);
+
+      expect(response.status).toBe(404);
+      expect(response.body.message).toContain('Resource not found');
+    });
+
+    it('should fail without authentication', async () => {
+      const response = await request(app)
+        .delete(`/api/resources/${resource2Id}`);
+
+      expect(response.status).toBe(401);
+      expect(response.body.message).toBe('No token provided');
+    });
+
+    it('should fail with invalid token', async () => {
+      const response = await request(app)
+        .delete(`/api/resources/${resource2Id}`)
+        .set('Authorization', 'Bearer invalid-token');
+
+      expect(response.status).toBe(401);
+      expect(response.body.message).toBe('Invalid token');
+    });
+
+    it('should create ACTIVE status record when resource is first accessed', async () => {
+      // First, check that no ResourceStatus exists for resource3
+      const initialStatus = await (prisma as any).resourceStatus.findUnique({
+        where: { resourceId: resource3Id },
+      });
+      expect(initialStatus).toBeNull();
+
+      // Soft delete the resource (this should create an ACTIVE status first, then update to DELETED)
+      const response = await request(app)
+        .delete(`/api/resources/${resource3Id}`)
+        .set('Authorization', `Bearer ${adminUserToken}`);
+
+      expect(response.status).toBe(204);
+
+      // Verify DELETED status was created
+      const resourceStatus = await (prisma as any).resourceStatus.findUnique({
+        where: { resourceId: resource3Id },
+      });
+      expect(resourceStatus).toBeTruthy();
+      expect(resourceStatus.status).toBe('DELETED');
+    });
+
+    it('should prevent double deletion of already deleted resource', async () => {
+      // Create a new resource specifically for this test
+      const doubleDeleteResource = await (prisma as any).resource.create({
+        data: {
+          name: 'Double Delete Test Resource',
+          description: 'Resource for testing double deletion prevention',
+        },
+      });
+
+      // First deletion
+      const firstResponse = await request(app)
+        .delete(`/api/resources/${doubleDeleteResource.id}`)
+        .set('Authorization', `Bearer ${adminUserToken}`);
+
+      expect(firstResponse.status).toBe(204);
+
+      // Second deletion attempt should fail
+      const secondResponse = await request(app)
+        .delete(`/api/resources/${doubleDeleteResource.id}`)
+        .set('Authorization', `Bearer ${adminUserToken}`);
+
+      expect(secondResponse.status).toBe(400);
+      expect(secondResponse.body.message).toContain('Resource is already deleted');
+
+      // Clean up
+      await (prisma as any).resource.delete({ where: { id: doubleDeleteResource.id } });
+    });
+  });
 });

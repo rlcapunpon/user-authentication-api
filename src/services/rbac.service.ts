@@ -151,23 +151,32 @@ export const getUserPermissionsFromRoles = async (userId: string, resourceId: st
  * Get resources that a user has access to based on their roles
  */
 export const getUserAccessibleResources = async (userId: string): Promise<any[]> => {
-  // If user is super admin, return all resources
+  // If user is super admin, return all resources except deleted ones
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { isSuperAdmin: true }
   });
 
   if (user?.isSuperAdmin) {
-    return getAllResources();
+    return (prisma as any).resource.findMany({
+      where: {
+        status: {
+          is: null, // No status record means ACTIVE
+        },
+      },
+    });
   }
 
-  // Get resources where user has UserResourceRole entries (either specific or global)
-  const userResources = await prisma.resource.findMany({
+  // Get resources where user has UserResourceRole entries (either specific or global) and not deleted
+  const userResources = await (prisma as any).resource.findMany({
     where: {
       userRoles: {
         some: {
           userId: userId,
         },
+      },
+      status: {
+        is: null, // No status record means ACTIVE
       },
     },
     include: {
@@ -285,15 +294,27 @@ export const getUserAccessibleResourcesPaginated = async (
 
   if (user?.isSuperAdmin) {
     const [resources, total] = await Promise.all([
-      prisma.resource.findMany({
-        where,
+      (prisma as any).resource.findMany({
+        where: {
+          ...where,
+          status: {
+            is: null, // No status record means ACTIVE
+          },
+        },
         skip,
         take: limit,
         orderBy: {
           createdAt: 'desc',
         },
       }),
-      prisma.resource.count({ where }),
+      (prisma as any).resource.count({
+        where: {
+          ...where,
+          status: {
+            is: null, // No status record means ACTIVE
+          },
+        },
+      }),
     ]);
 
     const totalPages = Math.ceil(total / limit);
@@ -311,15 +332,18 @@ export const getUserAccessibleResourcesPaginated = async (
     };
   }
 
-  // Get resources where user has UserResourceRole entries (either specific or global) - paginated with filters
+  // Get resources where user has UserResourceRole entries (either specific or global) - paginated with filters and exclude deleted
   const [userResources, total] = await Promise.all([
-    prisma.resource.findMany({
+    (prisma as any).resource.findMany({
       where: {
         ...where,
         userRoles: {
           some: {
             userId: userId,
           },
+        },
+        status: {
+          is: null, // No status record means ACTIVE
         },
       },
       skip,
@@ -328,13 +352,16 @@ export const getUserAccessibleResourcesPaginated = async (
         createdAt: 'desc',
       },
     }),
-    prisma.resource.count({
+    (prisma as any).resource.count({
       where: {
         ...where,
         userRoles: {
           some: {
             userId: userId,
           },
+        },
+        status: {
+          is: null, // No status record means ACTIVE
         },
       },
     }),
@@ -431,5 +458,35 @@ export const getResourceRoles = async (userId: string, resourceIds: string[]): P
   }));
 
   return { resourceRoles };
+};
+
+export const softDeleteResource = async (resourceId: string): Promise<void> => {
+  // Check if resource exists
+  const resource = await (prisma as any).resource.findUnique({
+    where: { id: resourceId },
+    include: { status: true },
+  });
+
+  if (!resource) {
+    throw new Error('Resource not found');
+  }
+
+  // Check if already deleted
+  if (resource.status?.status === 'DELETED') {
+    throw new Error('Resource is already deleted');
+  }
+
+  // Create or update ResourceStatus to DELETED
+  await (prisma as any).resourceStatus.upsert({
+    where: { resourceId },
+    update: {
+      status: 'DELETED',
+      updatedAt: new Date(),
+    },
+    create: {
+      resourceId,
+      status: 'DELETED',
+    },
+  });
 };
 
