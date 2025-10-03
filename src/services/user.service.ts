@@ -112,7 +112,8 @@ export const updateUserSuperAdmin = async (userId: string, isSuperAdmin: boolean
 };
 
 export const assignUserResourceRole = async (userId: string, roleId: string, resourceId?: string) => {
-  return (prisma as any).userResourceRole.create({
+  // First, assign the requested role
+  const userResourceRole = await (prisma as any).userResourceRole.create({
     data: {
       userId,
       roleId,
@@ -124,6 +125,38 @@ export const assignUserResourceRole = async (userId: string, roleId: string, res
       resource: true,
     },
   });
+
+  // Step 9: When a user is assigned to a resource with a role (not WINDBOOKS_APP),
+  // automatically assign the same role to WINDBOOKS_APP if user has no WINDBOOKS_APP role
+  if (resourceId) {
+    // Find the WINDBOOKS_APP resource
+    const windbooksAppResource = await (prisma as any).resource.findFirst({
+      where: { name: 'WINDBOOKS_APP' },
+    });
+
+    if (windbooksAppResource && resourceId !== windbooksAppResource.id) {
+      // Check if user already has any role for WINDBOOKS_APP
+      const existingWindbooksAppRole = await (prisma as any).userResourceRole.findFirst({
+        where: {
+          userId,
+          resourceId: windbooksAppResource.id,
+        },
+      });
+
+      // If no WINDBOOKS_APP role exists, assign the same role
+      if (!existingWindbooksAppRole) {
+        await (prisma as any).userResourceRole.create({
+          data: {
+            userId,
+            roleId,
+            resourceId: windbooksAppResource.id,
+          },
+        });
+      }
+    }
+  }
+
+  return userResourceRole;
 };
 
 export const revokeUserResourceRole = async (userId: string, roleId: string, resourceId?: string) => {

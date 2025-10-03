@@ -271,3 +271,25 @@
 - **Technical Details**: Email notifications are non-blocking (wrapped in try-catch), include details about who updated the password and when, use branded HTML templates with security styling
 
 **Status**: ✅ Complete - Email notifications on password updates implemented and tested following strict TDD methodology.
+
+## Step 10-03-2025.STEP9 - Automatic WINDBOOKS_APP Role Assignment
+- **Test Implementation**: Created comprehensive test suite in `tests/user-service.test.ts` with 4 new failing tests for automatic WINDBOOKS_APP role assignment (TDD approach)
+- **Service Layer**: Enhanced `assignUserResourceRole` function in `src/services/user.service.ts` to automatically assign WINDBOOKS_APP roles when users are assigned roles to other resources
+- **Implementation Details**: Added logic to check for WINDBOOKS_APP resource existence, create UserResourceRole record if it doesn't exist, and ensure users maintain consistent global permissions across resources
+- **Validation Results**: All 247 tests passing, TypeScript compilation successful, automatic role assignment works for both new and existing role assignments
+- **Technical Details**: WINDBOOKS_APP serves as global resource for consistent role management; assignment logic handles edge cases like resource not existing; maintains data integrity through proper error handling
+
+**Status**: ✅ Complete - Automatic WINDBOOKS_APP role assignment implemented and tested following strict TDD methodology.
+
+## Step 10-03-2025.STEP10 - Email Verification Content Update
+- **Test Implementation**: Created comprehensive test suite in `tests/email-service.test.ts` with failing tests for updated email verification content (TDD approach)
+- **Email Service Updates**: Updated `createVerificationEmail` function in `src/services/email.service.ts` to include new "What Awaits You" section with detailed WindBooks features:
+  - 1. Hassle-Free Compliance: Automatic reminders and guided filing for VAT, Percentage Tax, Withholding, and Income Tax obligations
+  - 2. Smart Bookkeeping: Real-time recording of sales, expenses, and withholdings, seamlessly organized for BIR compliance and business insights
+  - 3. Peace of Mind with BIR-Ready Reports: Generate BIR-compliant forms, summaries, and financial statements that are always ready for audit or submission
+  - 4. More Time for Growth: Spend less time on manual paperwork and tax calculations, and more time growing your business with confidence
+- **Template Updates**: Updated both HTML and text versions of the email template with the new content
+- **Validation Results**: All 258 tests passing, TypeScript compilation successful, email verification template now provides clear value proposition to new users
+- **Technical Details**: Content updated in both HTML (formatted with strong tags) and plain text versions; tests validate presence of all required content elements
+
+**Status**: ✅ Complete - Email verification content updated with comprehensive WindBooks feature descriptions following strict TDD methodology.

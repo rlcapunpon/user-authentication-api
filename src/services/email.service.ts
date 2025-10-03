@@ -233,11 +233,15 @@ export const createVerificationEmail = (data: EmailVerificationData) => {
             </div>
 
             <div class="features-preview">
-              <h3>🌟 What awaits you:</h3>
-              <p>📚 Access to your personal library</p>
-              <p>🔐 Secure account management</p>
-              <p>🎯 Personalized recommendations</p>
-              <p>💬 Community features</p>
+              <h3>What Awaits You:</h3>
+              <p><strong>1. Hassle-Free Compliance</strong></p>
+              <p>Automatic reminders and guided filing for VAT, Percentage Tax, Withholding, and Income Tax obligations — no more missed deadlines.</p>
+              <p><strong>2. Smart Bookkeeping</strong></p>
+              <p>Real-time recording of sales, expenses, and withholdings, seamlessly organized for BIR compliance and business insights.</p>
+              <p><strong>3. Peace of Mind with BIR-Ready Reports</strong></p>
+              <p>Generate BIR-compliant forms, summaries, and financial statements that are always ready for audit or submission.</p>
+              <p><strong>4. More Time for Growth</strong></p>
+              <p>Spend less time on manual paperwork and tax calculations, and more time growing your business with confidence.</p>
             </div>
 
             <div class="divider"></div>
@@ -283,11 +287,18 @@ export const createVerificationEmail = (data: EmailVerificationData) => {
 
     Please click this link to verify your email: ${verificationLink}
 
-    🌟 What awaits you:
-    📚 Access to your personal library
-    🔐 Secure account management  
-    🎯 Personalized recommendations
-    💬 Community features
+    What Awaits You:
+    1. Hassle-Free Compliance
+    Automatic reminders and guided filing for VAT, Percentage Tax, Withholding, and Income Tax obligations — no more missed deadlines.
+
+    2. Smart Bookkeeping
+    Real-time recording of sales, expenses, and withholdings, seamlessly organized for BIR compliance and business insights.
+
+    3. Peace of Mind with BIR-Ready Reports
+    Generate BIR-compliant forms, summaries, and financial statements that are always ready for audit or submission.
+
+    4. More Time for Growth
+    Spend less time on manual paperwork and tax calculations, and more time growing your business with confidence.
 
     ⏰ Quick heads-up: This verification link is valid for 15 minutes to keep your account secure. If it expires, don't worry - you can always request a new one!
 

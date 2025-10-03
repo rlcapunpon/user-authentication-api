@@ -8,6 +8,8 @@ describe('User Service', () => {
     await (prisma as any).refreshToken.deleteMany({});
     await (prisma as any).userDetails.deleteMany({});
     await (prisma as any).user.deleteMany({});
+    await (prisma as any).role.deleteMany({});
+    await (prisma as any).resource.deleteMany({});
   });
 
   afterAll(async () => {
@@ -142,6 +144,153 @@ describe('User Service', () => {
       expect(result.data[0].email).toBe('john-active@example.com');
       expect(result.data[0].isActive).toBe(true);
       expect(result.pagination.total).toBe(1);
+    });
+  });
+
+  describe('assignUserResourceRole', () => {
+    let testUser: any;
+    let testRole: any;
+    let testResource: any;
+    let windbooksAppResource: any;
+
+    beforeEach(async () => {
+      // Create test data
+      testUser = await (prisma as any).user.create({
+        data: {
+          email: 'test@example.com',
+          isActive: true,
+          isSuperAdmin: false,
+        },
+      });
+
+      testRole = await (prisma as any).role.create({
+        data: {
+          name: 'TEST_ROLE',
+          description: 'Test role for testing',
+          permissions: ['test:read'],
+        },
+      });
+
+      testResource = await (prisma as any).resource.create({
+        data: {
+          name: 'Test Resource',
+          description: 'A test resource',
+        },
+      });
+
+      windbooksAppResource = await (prisma as any).resource.create({
+        data: {
+          name: 'WINDBOOKS_APP',
+          description: 'Main frontend application resource',
+        },
+      });
+    });
+
+    it('should assign role to user for a resource', async () => {
+      const result = await userService.assignUserResourceRole(testUser.id, testRole.id, testResource.id);
+
+      expect(result).toBeDefined();
+      expect(result.userId).toBe(testUser.id);
+      expect(result.roleId).toBe(testRole.id);
+      expect(result.resourceId).toBe(testResource.id);
+
+      // Verify in database
+      const userResourceRole = await (prisma as any).userResourceRole.findFirst({
+        where: {
+          userId: testUser.id,
+          roleId: testRole.id,
+          resourceId: testResource.id,
+        },
+      });
+      expect(userResourceRole).toBeDefined();
+    });
+
+    it('should automatically assign WINDBOOKS_APP role when user has no WINDBOOKS_APP role and is assigned to different resource', async () => {
+      // Assign user to test resource (not WINDBOOKS_APP)
+      await userService.assignUserResourceRole(testUser.id, testRole.id, testResource.id);
+
+      // Verify that user now has the role for both testResource and WINDBOOKS_APP
+      const testResourceRole = await (prisma as any).userResourceRole.findFirst({
+        where: {
+          userId: testUser.id,
+          roleId: testRole.id,
+          resourceId: testResource.id,
+        },
+      });
+      expect(testResourceRole).toBeDefined();
+
+      const windbooksAppRole = await (prisma as any).userResourceRole.findFirst({
+        where: {
+          userId: testUser.id,
+          roleId: testRole.id,
+          resourceId: windbooksAppResource.id,
+        },
+      });
+      expect(windbooksAppRole).not.toBeNull();
+    });
+
+    it('should not assign WINDBOOKS_APP role when user already has a WINDBOOKS_APP role', async () => {
+      // First assign a different role to WINDBOOKS_APP
+      const differentRole = await (prisma as any).role.create({
+        data: {
+          name: 'DIFFERENT_ROLE',
+          description: 'Different role',
+          permissions: ['different:permission'],
+        },
+      });
+
+      await (prisma as any).userResourceRole.create({
+        data: {
+          userId: testUser.id,
+          roleId: differentRole.id,
+          resourceId: windbooksAppResource.id,
+        },
+      });
+
+      // Now assign testRole to testResource
+      await userService.assignUserResourceRole(testUser.id, testRole.id, testResource.id);
+
+      // Verify testResource role was assigned
+      const testResourceRole = await (prisma as any).userResourceRole.findFirst({
+        where: {
+          userId: testUser.id,
+          roleId: testRole.id,
+          resourceId: testResource.id,
+        },
+      });
+      expect(testResourceRole).toBeDefined();
+
+      // Verify no additional WINDBOOKS_APP role was created (should still only have the differentRole)
+      const windbooksAppRoles = await (prisma as any).userResourceRole.findMany({
+        where: {
+          userId: testUser.id,
+          resourceId: windbooksAppResource.id,
+        },
+      });
+      expect(windbooksAppRoles).toHaveLength(1);
+      expect(windbooksAppRoles[0].roleId).toBe(differentRole.id);
+    });
+
+    it('should not assign WINDBOOKS_APP role when assigning directly to WINDBOOKS_APP resource', async () => {
+      // Count existing roles before assignment
+      const initialCount = await (prisma as any).userResourceRole.count();
+
+      // Assign role directly to WINDBOOKS_APP
+      await userService.assignUserResourceRole(testUser.id, testRole.id, windbooksAppResource.id);
+
+      // Verify only one role was created
+      const finalCount = await (prisma as any).userResourceRole.count();
+      expect(finalCount).toBe(initialCount + 1);
+
+      // Verify the role was assigned to WINDBOOKS_APP
+      const windbooksAppRole = await (prisma as any).userResourceRole.findFirst({
+        where: {
+          userId: testUser.id,
+          roleId: testRole.id,
+          resourceId: windbooksAppResource.id,
+        },
+      });
+      expect(windbooksAppRole).toBeDefined();
     });
   });
 });
