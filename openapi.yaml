@@ -655,6 +655,7 @@ paths:
     post:
       tags: [Resources]
       summary: Create a new resource
+      description: Create a new resource and automatically initialize it with an ACTIVE status. A ResourceStatus record is created alongside the resource to track its lifecycle state.
       security:
         - bearerAuth: []
       requestBody:
@@ -665,7 +666,7 @@ paths:
               $ref: '#/components/schemas/CreateResourceRequest'
       responses:
         '201':
-          description: Resource created successfully
+          description: Resource created successfully with ACTIVE status
           content:
             application/json:
               schema:
@@ -1014,7 +1015,7 @@ paths:
     delete:
       tags: [Resources]
       summary: Soft delete a resource
-      description: Mark a resource as deleted (soft delete). The resource will no longer appear in GET requests but remains in the database for audit purposes.
+      description: Mark a resource as deleted (soft delete) by updating its ResourceStatus to DELETED. The resource will no longer appear in GET requests but remains in the database for audit purposes.
       security:
         - bearerAuth: []
       parameters:
@@ -1026,7 +1027,7 @@ paths:
           description: The unique identifier of the resource to delete
       responses:
         '204':
-          description: Resource successfully marked as deleted
+          description: Resource successfully marked as deleted (status set to DELETED)
         '400':
           description: Bad request - resource is already deleted
         '401':
@@ -1656,6 +1657,7 @@ components:
         id:
           type: string
           description: Optional custom resource ID. If not provided, an auto-generated ID will be used.
+      description: Request payload for creating a new resource. Upon successful creation, a ResourceStatus record will be automatically created with ACTIVE status.
 
     ResourceRole:
       type: object

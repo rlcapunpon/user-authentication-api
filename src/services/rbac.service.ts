@@ -62,14 +62,25 @@ export const getAllResources = () => {
   });
 };
 
-export const createResource = (name: string, description?: string, id?: string) => {
-  return prisma.resource.create({
+export const createResource = async (name: string, description?: string, id?: string) => {
+  // Create the resource
+  const resource = await prisma.resource.create({
     data: {
       ...(id && { id }),
       name,
       description,
     },
   });
+
+  // Create ResourceStatus record with ACTIVE status
+  await (prisma as any).resourceStatus.create({
+    data: {
+      resourceId: resource.id,
+      status: 'ACTIVE',
+    },
+  });
+
+  return resource;
 };
 
 export const createRole = (name: string, permissions: string[], description?: string) => {

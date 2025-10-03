@@ -345,6 +345,38 @@ router.get('/:resourceId/user-role', authGuard, getUserRoleForResource);
 
 /**
  * @swagger
+ * /resources/{id}:
+ *   delete:
+ *     summary: Soft delete a resource
+ *     description: Mark a resource as deleted (soft delete). The resource will no longer appear in GET requests but remains in the database for audit purposes.
+ *     tags: [Resources]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The unique identifier of the resource to delete
+ *     responses:
+ *       '204':
+ *         description: Resource successfully marked as deleted (status set to DELETED)
+ *       '400':
+ *         description: Bad request - resource is already deleted
+ *       '401':
+ *         description: Unauthorized
+ *       '403':
+ *         description: Forbidden - insufficient permissions
+ *       '404':
+ *         description: Resource not found
+ *       '500':
+ *         description: Internal server error
+ */
+router.delete('/:id', authGuard, rbacGuard(['resource:delete']), deleteResource);
+
+/**
+ * @swagger
  * /resources/{userId}:
  *   get:
  *     summary: Get all resources and roles assigned to a specific user
@@ -358,9 +390,10 @@ router.get('/:resourceId/user-role', authGuard, getUserRoleForResource);
  *         required: true
  *         schema:
  *           type: string
+ *           format: uuid
  *         description: The unique identifier of the user
  *     responses:
- *       200:
+ *       '200':
  *         description: User resources and roles retrieved successfully
  *         content:
  *           application/json:
@@ -384,13 +417,13 @@ router.get('/:resourceId/user-role', authGuard, getUserRoleForResource);
  *                       roleId:
  *                         type: string
  *                         description: The role ID
- *       401:
+ *       '401':
  *         description: Unauthorized
- *       403:
+ *       '403':
  *         description: Forbidden - regular users can only access their own data
- *       404:
+ *       '404':
  *         description: User not found
- *       500:
+ *       '500':
  *         description: Internal server error
  */
 router.get('/:userId', authGuard, getUserResourcesAndRoles);
@@ -457,37 +490,5 @@ router.get('/:userId', authGuard, getUserResourcesAndRoles);
  *         description: Internal server error
  */
 router.post('/user-roles', authGuard, validate(getResourceRolesSchema), getResourceRoles);
-
-/**
- * @swagger
- * /resources/{id}:
- *   delete:
- *     summary: Soft delete a resource
- *     description: Mark a resource as deleted (soft delete). The resource will no longer appear in GET requests but remains in the database.
- *     tags: [Resources]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: The unique identifier of the resource to delete
- *     responses:
- *       204:
- *         description: Resource successfully marked as deleted
- *       400:
- *         description: Bad request - resource is already deleted
- *       401:
- *         description: Unauthorized
- *       403:
- *         description: Forbidden - insufficient permissions
- *       404:
- *         description: Resource not found
- *       500:
- *         description: Internal server error
- */
-router.delete('/:id', authGuard, rbacGuard(['resource:delete']), deleteResource);
 
 export default router;

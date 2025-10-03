@@ -242,3 +242,22 @@
 - **Technical Details**: Uses Prisma where clauses with contains/mode for name filtering, exact ID matching; filters work with pagination and maintain backward compatibility
 
 **Status**: ✅ Complete - GET /resources/v2 endpoint enhanced with resourceName and resourceId filtering following strict TDD methodology.
+
+## Step 10-03-2025.STEP3 - ResourceStatus Creation on Resource Creation
+- **Test Implementation**: Created comprehensive test suite in `tests/resources-endpoints.test.ts` with 2 new failing tests for automatic ResourceStatus creation (TDD approach)
+- **Service Layer**: Updated `createResource` function in `src/services/rbac.service.ts` to be async and automatically create ResourceStatus record with ACTIVE status when creating new resources
+- **Implementation Details**: Modified function to create both resource and ResourceStatus records in sequence, ensuring atomic resource creation with status tracking
+- **Validation Results**: All 181 tests passing, TypeScript compilation successful, ResourceStatus records are automatically created with ACTIVE status for both auto-generated and custom resource IDs
+- **Technical Details**: Uses Prisma transactions implicitly through sequential operations; ResourceStatus record linked via resourceId foreign key; maintains backward compatibility with existing resource creation
+
+**Status**: ✅ Complete - POST /resources endpoint now automatically creates ResourceStatus records with ACTIVE status following strict TDD methodology.
+
+## Step 10-03-2025.STEP4 - OpenAPI Documentation Updates
+- **Documentation Updates**: Updated `openapi.yaml` to reflect automatic ResourceStatus creation behavior:
+  - Enhanced POST /resources endpoint description to mention automatic ACTIVE status initialization
+  - Updated DELETE /resources/{id} endpoint description to clarify ResourceStatus is set to DELETED
+  - Added description to CreateResourceRequest schema noting automatic ResourceStatus creation
+- **Validation Results**: All 217 tests passing, TypeScript compilation successful, API documentation accurately reflects internal ResourceStatus lifecycle management
+- **Technical Details**: Documentation now clearly communicates that resource creation includes automatic status tracking, and soft deletion updates status rather than removing records
+
+**Status**: ✅ Complete - OpenAPI specification updated to reflect automatic ResourceStatus creation and lifecycle management following implementation changes.

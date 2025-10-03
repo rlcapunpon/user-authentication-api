@@ -696,8 +696,55 @@ describe('Resources Endpoints', () => {
       expect(response.status).toBe(403);
       expect(response.body.message).toContain('Insufficient permissions');
     });
-  });
 
+    it('should automatically create ACTIVE ResourceStatus record when creating a resource', async () => {
+      const newResource = {
+        name: 'Resource with Status',
+        description: 'A resource that should have an ACTIVE status record',
+      };
+
+      const response = await request(app)
+        .post('/api/resources')
+        .set('Authorization', `Bearer ${adminUserToken}`)
+        .send(newResource);
+
+      expect(response.status).toBe(201);
+      expect(response.body).toHaveProperty('id');
+
+      // Verify ResourceStatus record was created with ACTIVE status
+      const resourceStatus = await (prisma as any).resourceStatus.findUnique({
+        where: { resourceId: response.body.id },
+      });
+      expect(resourceStatus).toBeTruthy();
+      expect(resourceStatus.status).toBe('ACTIVE');
+      expect(resourceStatus.resourceId).toBe(response.body.id);
+    });
+
+    it('should automatically create ACTIVE ResourceStatus record when creating resource with custom ID', async () => {
+      const customId = 'custom-status-resource-id';
+      const newResource = {
+        id: customId,
+        name: 'Custom ID Resource with Status',
+        description: 'A resource with custom ID that should have ACTIVE status',
+      };
+
+      const response = await request(app)
+        .post('/api/resources')
+        .set('Authorization', `Bearer ${adminUserToken}`)
+        .send(newResource);
+
+      expect(response.status).toBe(201);
+      expect(response.body.id).toBe(customId);
+
+      // Verify ResourceStatus record was created with ACTIVE status
+      const resourceStatus = await (prisma as any).resourceStatus.findUnique({
+        where: { resourceId: customId },
+      });
+      expect(resourceStatus).toBeTruthy();
+      expect(resourceStatus.status).toBe('ACTIVE');
+      expect(resourceStatus.resourceId).toBe(customId);
+    });
+  });
   describe('POST /api/resources/user-roles', () => {
     it('should return resource roles for authenticated user given a list of resourceIds', async () => {
       const requestBody = {
