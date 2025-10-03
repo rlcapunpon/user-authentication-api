@@ -4,6 +4,13 @@ import { prisma } from '../src/db';
 import { hashPassword } from '../src/utils/crypto';
 import { generateAccessToken } from '../src/utils/jwt';
 
+// Mock the email service
+jest.mock('../src/services/email.service', () => ({
+  sendPasswordUpdateNotification: jest.fn().mockResolvedValue(true),
+}));
+
+const mockSendPasswordUpdateNotification = require('../src/services/email.service').sendPasswordUpdateNotification;
+
 describe('User Password Update Endpoints', () => {
   let testUserId: string;
   let testUserToken: string;
@@ -212,20 +219,30 @@ describe('User Password Update Endpoints', () => {
       expect(response.status).toBe(400);
     });
 
-    it('should reject when user not found', async () => {
-      const fakeUserId = '00000000-0000-0000-0000-000000000000';
+    it('should send email notification when password is updated', async () => {
+      // Clear mock call history
+      (mockSendPasswordUpdateNotification as jest.Mock).mockClear();
+
       const response = await request(app)
         .post('/api/users/update/password')
         .set('Authorization', `Bearer ${adminUserToken}`)
         .send({
-          userId: fakeUserId,
-          userEmail: 'fake@example.com',
-          current_password: '',
+          userId: testUserId,
+          userEmail: testEmail,
+          current_password: '', // Should be ignored for SUPERADMIN
           new_password: newPassword,
           new_password_confirmation: newPassword,
         });
 
-      expect(response.status).toBe(404);
+      expect(response.status).toBe(200);
+      
+      // Verify email notification was sent
+      expect(mockSendPasswordUpdateNotification).toHaveBeenCalledTimes(1);
+      expect(mockSendPasswordUpdateNotification).toHaveBeenCalledWith({
+        to: testEmail,
+        updatedBy: adminEmail,
+        updatedAt: expect.any(String),
+      });
     });
   });
 

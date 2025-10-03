@@ -29,6 +29,12 @@ export interface EmailVerificationData {
   verificationUrl: string;
 }
 
+export interface PasswordUpdateNotificationData {
+  to: string;
+  updatedBy: string;
+  updatedAt: string;
+}
+
 export const createVerificationEmail = (data: EmailVerificationData) => {
   const { to, verificationCode, verificationUrl } = data;
 
@@ -410,4 +416,367 @@ export const sendVerificationEmailWithRetry = async (
   });
 
   return false;
+};
+
+export const createPasswordUpdateNotificationEmail = (data: PasswordUpdateNotificationData) => {
+  const { to, updatedBy, updatedAt } = data;
+
+  const subject = '🔐 Your WindBooks Password Has Been Updated';
+  const formattedDate = new Date(updatedAt).toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    timeZoneName: 'short',
+  });
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Password Updated - WindBooks</title>
+      <style>
+        body {
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          line-height: 1.6;
+          color: #2c3e50;
+          margin: 0;
+          padding: 0;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          min-height: 100vh;
+        }
+        .email-wrapper {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          padding: 40px 20px;
+          min-height: 100vh;
+        }
+        .container {
+          max-width: 600px;
+          margin: 0 auto;
+          background: #ffffff;
+          border-radius: 16px;
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+          overflow: hidden;
+        }
+        .header {
+          background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+          padding: 40px 30px;
+          text-align: center;
+          position: relative;
+        }
+        .header::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="security" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="2" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1.5" fill="rgba(255,255,255,0.08)"/><circle cx="50" cy="10" r="1" fill="rgba(255,255,255,0.06)"/></pattern></defs><rect width="100" height="100" fill="url(%23security)"/></svg>') repeat;
+        }
+        .header h1 {
+          color: #ffffff;
+          margin: 0;
+          font-size: 28px;
+          font-weight: 300;
+          text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          position: relative;
+          z-index: 1;
+        }
+        .security-icon {
+          font-size: 48px;
+          margin-bottom: 10px;
+          display: block;
+          position: relative;
+          z-index: 1;
+        }
+        .content {
+          padding: 40px 30px;
+          background: #ffffff;
+        }
+        .content h2 {
+          color: #2c3e50;
+          font-size: 24px;
+          font-weight: 400;
+          margin-bottom: 20px;
+          text-align: center;
+        }
+        .notification-box {
+          background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+          border: 2px solid #f39c12;
+          border-radius: 12px;
+          padding: 25px;
+          margin: 25px 0;
+          text-align: center;
+        }
+        .notification-box .icon {
+          font-size: 36px;
+          color: #f39c12;
+          margin-bottom: 15px;
+        }
+        .notification-box h3 {
+          color: #d68910;
+          margin: 0 0 10px 0;
+          font-size: 20px;
+        }
+        .notification-box p {
+          color: #8b4513;
+          margin: 5px 0;
+          font-weight: 500;
+        }
+        .details-section {
+          background: #f8f9fa;
+          border-radius: 8px;
+          padding: 20px;
+          margin: 25px 0;
+          border-left: 4px solid #ff6b6b;
+        }
+        .details-section h4 {
+          color: #495057;
+          margin: 0 0 15px 0;
+          font-size: 16px;
+          font-weight: 600;
+        }
+        .detail-item {
+          display: flex;
+          justify-content: space-between;
+          padding: 8px 0;
+          border-bottom: 1px solid #e9ecef;
+        }
+        .detail-item:last-child {
+          border-bottom: none;
+        }
+        .detail-label {
+          font-weight: 600;
+          color: #6c757d;
+        }
+        .detail-value {
+          color: #495057;
+          font-family: 'Courier New', monospace;
+        }
+        .security-tips {
+          background: linear-gradient(135deg, #e8f5e8 0%, #f0fff4 100%);
+          border-radius: 8px;
+          padding: 20px;
+          margin: 25px 0;
+          border-left: 4px solid #28a745;
+        }
+        .security-tips h4 {
+          color: #155724;
+          margin: 0 0 10px 0;
+          font-size: 16px;
+        }
+        .security-tips ul {
+          color: #155724;
+          margin: 0;
+          padding-left: 20px;
+        }
+        .security-tips li {
+          margin: 5px 0;
+        }
+        .action-section {
+          text-align: center;
+          margin: 30px 0;
+        }
+        .button {
+          display: inline-block;
+          background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+          color: white;
+          padding: 16px 32px;
+          text-decoration: none;
+          border-radius: 50px;
+          margin: 10px 0;
+          font-weight: 600;
+          text-align: center;
+          width: 200px;
+          box-shadow: 0 8px 20px rgba(255, 107, 107, 0.3);
+          transition: all 0.3s ease;
+          font-size: 16px;
+        }
+        .button:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 12px 25px rgba(255, 107, 107, 0.4);
+        }
+        .footer {
+          background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+          padding: 30px;
+          text-align: center;
+          font-size: 14px;
+          color: #78909c;
+          border-top: 1px solid #eceff1;
+        }
+        .warning-note {
+          background: #fff3cd;
+          border: 1px solid #ffeaa7;
+          border-radius: 8px;
+          padding: 15px;
+          margin: 20px 0;
+          border-left: 4px solid #f39c12;
+        }
+        .warning-note .icon {
+          color: #f39c12;
+          font-size: 18px;
+          margin-right: 8px;
+        }
+        .warning-note strong {
+          color: #8b4513;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="email-wrapper">
+        <div class="container">
+          <div class="header">
+            <span class="security-icon">🔐</span>
+            <h1>Password Updated</h1>
+          </div>
+          <div class="content">
+            <h2>Security Alert: Password Change</h2>
+
+            <div class="notification-box">
+              <div class="icon">⚠️</div>
+              <h3>Password Successfully Updated</h3>
+              <p>Your WindBooks account password has been changed.</p>
+              <p>If you made this change, no further action is needed.</p>
+            </div>
+
+            <div class="details-section">
+              <h4>📋 Change Details:</h4>
+              <div class="detail-item">
+                <span class="detail-label">Updated By:</span>
+                <span class="detail-value">${updatedBy}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Updated At:</span>
+                <span class="detail-value">${formattedDate}</span>
+              </div>
+            </div>
+
+            <div class="warning-note">
+              <span class="icon">🚨</span>
+              <strong>Important:</strong> If you did not request this password change, please contact our support team immediately and consider changing your password again.
+            </div>
+
+            <div class="security-tips">
+              <h4>🛡️ Security Best Practices:</h4>
+              <ul>
+                <li>Use a strong, unique password for your account</li>
+                <li>Enable two-factor authentication when available</li>
+                <li>Never share your password with others</li>
+                <li>Regularly update your passwords</li>
+                <li>Be cautious of phishing attempts</li>
+              </ul>
+            </div>
+
+            <div class="action-section">
+              <p>If you have any concerns about this password change, please contact our support team.</p>
+              <a href="mailto:support@windbooks.com" class="button">📞 Contact Support</a>
+            </div>
+
+            <p style="margin-top: 30px; text-align: center; color: #6c757d; font-size: 14px;">
+              <strong>Stay Secure! 🔒</strong><br>
+              <span style="color: #ff6b6b;">WindBooks Security Team</span>
+            </p>
+          </div>
+          <div class="footer">
+            <p>This is an automated security notification for <strong>${to}</strong></p>
+            <p>If you have questions about your account security, our team is here to help! 💙</p>
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const text = `
+    🔐 PASSWORD UPDATED - WindBooks Security Alert
+
+    Your WindBooks account password has been successfully changed.
+
+    📋 Change Details:
+    - Updated By: ${updatedBy}
+    - Updated At: ${formattedDate}
+
+    ⚠️  IMPORTANT: If you did not request this password change, please contact our support team immediately!
+
+    🛡️ Security Best Practices:
+    - Use a strong, unique password for your account
+    - Enable two-factor authentication when available
+    - Never share your password with others
+    - Regularly update your passwords
+    - Be cautious of phishing attempts
+
+    If you have any concerns about this password change, please contact our support team at support@windbooks.com.
+
+    Stay Secure!
+    WindBooks Security Team
+
+    ---
+    This is an automated security notification for ${to}
+    If you have questions about your account security, our team is here to help!
+  `;
+
+  return {
+    to,
+    from: SENDGRID_FROM,
+    subject,
+    html,
+    text,
+  };
+};
+
+export const sendPasswordUpdateNotification = async (data: PasswordUpdateNotificationData): Promise<boolean> => {
+  try {
+    console.log('Attempting to send password update notification:', {
+      to: data.to,
+      updatedBy: data.updatedBy,
+      timestamp: new Date().toISOString(),
+    });
+
+    // Skip actual email sending in test environment for faster tests
+    if (process.env.NODE_ENV === 'test') {
+      console.log('Test environment detected - skipping actual email send:', {
+        to: data.to,
+        updatedBy: data.updatedBy,
+        timestamp: new Date().toISOString(),
+      });
+
+      // Simulate a small delay to make tests more realistic
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      console.log('Password update notification sent successfully (mocked):', {
+        to: data.to,
+        messageId: 'mock-password-update-message-id-' + Math.random().toString(36).substring(7),
+        statusCode: 202,
+        timestamp: new Date().toISOString(),
+      });
+
+      return true;
+    }
+
+    const msg = createPasswordUpdateNotificationEmail(data);
+    const [response] = await sgMail.send(msg);
+
+    console.log('Password update notification sent successfully:', {
+      to: data.to,
+      messageId: response.headers['x-message-id'],
+      statusCode: response.statusCode,
+      timestamp: new Date().toISOString(),
+    });
+
+    return true;
+  } catch (error) {
+    console.error('Failed to send password update notification:', {
+      to: data.to,
+      error: error instanceof Error ? {
+        message: error.message,
+        name: error.name,
+        stack: error.stack,
+      } : error,
+      timestamp: new Date().toISOString(),
+    });
+    return false;
+  }
 };

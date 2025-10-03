@@ -644,6 +644,10 @@ paths:
         
         **Password Requirements:**
         - Minimum 6 characters
+        
+        **Email Notification:**
+        - An email notification is automatically sent to the user whose password was updated
+        - The notification includes details about who updated the password and when
         - Must match confirmation password
       security:
         - bearerAuth: []

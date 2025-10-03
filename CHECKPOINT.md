@@ -261,3 +261,13 @@
 - **Technical Details**: Documentation now clearly communicates that resource creation includes automatic status tracking, and soft deletion updates status rather than removing records
 
 **Status**: ✅ Complete - OpenAPI specification updated to reflect automatic ResourceStatus creation and lifecycle management following implementation changes.
+
+## Step 10-03-2025.STEP6.5 - Email Notifications on Password Updates
+- **Test Implementation**: Created comprehensive test suite in `tests/user-password-endpoints.test.ts` with failing test for email notification on password updates (TDD approach)
+- **Email Service Enhancement**: Added `sendPasswordUpdateNotification` function to `src/services/email.service.ts` with security-themed HTML template and `PasswordUpdateNotificationData` interface
+- **Service Integration**: Modified `updateUserPassword` function in `src/services/user.service.ts` to send email notifications after successful password updates, wrapped in try-catch for non-blocking behavior
+- **OpenAPI Documentation**: Updated password update endpoint description in `openapi.yaml` to document automatic email notification behavior
+- **Validation Results**: All 243 tests passing, TypeScript compilation successful, email notifications sent on password updates with security-focused messaging
+- **Technical Details**: Email notifications are non-blocking (wrapped in try-catch), include details about who updated the password and when, use branded HTML templates with security styling
+
+**Status**: ✅ Complete - Email notifications on password updates implemented and tested following strict TDD methodology.

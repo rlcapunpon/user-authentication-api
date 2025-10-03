@@ -1,5 +1,6 @@
 import { prisma } from '../db';
 import { hashPassword, comparePassword } from '../utils/crypto';
+import { sendPasswordUpdateNotification } from './email.service';
 
 export const createUser = async (
   email: string,
@@ -313,6 +314,26 @@ export const updateUserPassword = async (
       updatedBy,
     },
   });
+
+  // Send email notification
+  try {
+    // Get the updater's email
+    const updater = await (prisma as any).user.findUnique({
+      where: { id: updatedBy },
+      select: { email: true },
+    });
+
+    if (updater) {
+      await sendPasswordUpdateNotification({
+        to: user.email,
+        updatedBy: updater.email,
+        updatedAt: new Date().toISOString(),
+      });
+    }
+  } catch (emailError) {
+    // Log email error but don't fail the password update
+    console.error('Failed to send password update notification email:', emailError);
+  }
 
   return { message: 'Password updated successfully' };
 };
