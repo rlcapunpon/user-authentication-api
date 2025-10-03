@@ -826,4 +826,91 @@ describe('Authentication Endpoints', () => {
       await (prisma as any).user.delete({ where: { id: user.id } });
     }, 10000); // Increase timeout to 10 seconds
   });
+
+  describe('Duplicate Email Registration Guards', () => {
+    const duplicateTestEmail = 'duplicate-test@example.com';
+    const duplicateTestPassword = 'testpassword123';
+    let existingUserId: string;
+
+    beforeAll(async () => {
+      // Clean up any existing test data
+      await (prisma as any).emailVerificationCode.deleteMany({});
+      await (prisma as any).userVerification.deleteMany({});
+      await (prisma as any).user.deleteMany({ where: { email: duplicateTestEmail } });
+
+      // Create an existing user for duplicate tests
+      const hashedPassword = await hashPassword(duplicateTestPassword);
+      const existingUser = await (prisma as any).user.create({
+        data: {
+          email: duplicateTestEmail,
+          isActive: true,
+          isSuperAdmin: false,
+          credential: {
+            create: {
+              passwordHash: hashedPassword,
+            },
+          },
+        },
+      });
+      existingUserId = existingUser.id;
+    });
+
+    afterAll(async () => {
+      // Clean up test data
+      await (prisma as any).emailVerificationCode.deleteMany({});
+      await (prisma as any).userVerification.deleteMany({});
+      await (prisma as any).user.deleteMany({ where: { email: duplicateTestEmail } });
+    });
+
+    it('should return 409 when trying to register with existing active user email', async () => {
+      const response = await request(app)
+        .post('/api/auth/register')
+        .send({
+          email: duplicateTestEmail,
+          password: 'anewpassword123',
+        })
+        .expect(409);
+
+      expect(response.body).toHaveProperty('message');
+      expect(response.body.message).toBe('Email is already used');
+    });
+
+    it('should return 409 when trying to register with existing inactive user email', async () => {
+      // First deactivate the existing user
+      await (prisma as any).user.update({
+        where: { id: existingUserId },
+        data: { isActive: false },
+      });
+
+      const response = await request(app)
+        .post('/api/auth/register')
+        .send({
+          email: duplicateTestEmail,
+          password: 'anewpassword456',
+        })
+        .expect(409);
+
+      expect(response.body).toHaveProperty('message');
+      expect(response.body.message).toBe('Email is already used');
+
+      // Reactivate for cleanup
+      await (prisma as any).user.update({
+        where: { id: existingUserId },
+        data: { isActive: true },
+      });
+    });
+
+    it('should return 409 with case insensitive email check', async () => {
+      const response = await request(app)
+        .post('/api/auth/register')
+        .send({
+          email: duplicateTestEmail.toUpperCase(),
+          password: 'anewpassword789',
+        })
+        .expect(409);
+
+      expect(response.body).toHaveProperty('message');
+      expect(response.body.message).toBe('Email is already used');
+    });
+  });
 });

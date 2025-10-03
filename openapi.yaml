@@ -44,6 +44,8 @@ tags:
     description: Role-based access control (global roles and permissions)
   - name: Resources
     description: Resource-based role and permission management
+  - name: Admin
+    description: Administrative endpoints (SUPERADMIN only)
   - name: Config
     description: System configuration endpoints
   - name: OIDC
@@ -71,6 +73,42 @@ paths:
                 type: string
                 example: OK
 
+  # Admin Endpoints
+  /admin/status:
+    get:
+      tags: [Admin]
+      summary: Get admin status counts (SUPERADMIN only)
+      description: |
+        Returns counts of users, resources, and roles with their respective statuses. 
+        Only accessible by SUPERADMIN users. Resource counts exclude the WINDBOOKS_APP seed resource.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Admin status counts retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminStatusResponse'
+        '401':
+          description: Unauthorized - No token provided or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - User is not SUPERADMIN
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   # Authentication Endpoints
   /auth/register:
     post:
@@ -90,7 +128,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/User'
         '400':
-          description: Bad request - validation error or user already exists
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict - email is already used
           content:
             application/json:
               schema:
@@ -586,6 +630,90 @@ paths:
           description: Unauthorized
         '403':
           description: Forbidden - insufficient permissions
+
+  /user/update/password:
+    post:
+      tags: [Users]
+      summary: Update user password
+      description: |
+        Update a user's password. 
+        
+        **Authorization Rules:**
+        - SUPERADMIN users can update any user's password without providing current password
+        - Regular users can only update their own password and must provide current password
+        
+        **Password Requirements:**
+        - Minimum 6 characters
+        - Must match confirmation password
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePasswordRequest'
+      responses:
+        '200':
+          description: Password updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Password updated successfully"
+        '400':
+          description: Bad request - validation error or invalid current password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - insufficient permissions
+        '404':
+          description: User not found
+
+  /user/last-update/creds/{userId}:
+    get:
+      tags: [Users]
+      summary: Get user password update history
+      description: |
+        Retrieve the password update history for a user.
+        
+        **Authorization Rules:**
+        - SUPERADMIN users can view any user's password update history
+        - Regular users can only view their own password update history
+        
+        **Response:**
+        - Returns last update timestamp, who updated it, and total count
+        - Returns null values if no password updates have been made
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The unique identifier of the user
+      responses:
+        '200':
+          description: Password update history retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PasswordUpdateHistoryResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - insufficient permissions
+        '404':
+          description: User not found
 
   # Global RBAC Endpoints
   /roles:
@@ -1440,6 +1568,52 @@ components:
           type: boolean
           description: Whether the user should be a super admin
 
+    UpdatePasswordRequest:
+      type: object
+      required:
+        - userId
+        - userEmail
+        - new_password
+        - new_password_confirmation
+      properties:
+        userId:
+          type: string
+          format: uuid
+          description: The unique identifier of the user whose password is being updated
+        userEmail:
+          type: string
+          format: email
+          description: The email address of the user whose password is being updated
+        current_password:
+          type: string
+          description: Current password (required for regular users, optional for SUPERADMIN when updating their own password)
+        new_password:
+          type: string
+          minLength: 6
+          description: New password (minimum 6 characters)
+        new_password_confirmation:
+          type: string
+          minLength: 6
+          description: New password confirmation (must match new_password)
+
+    PasswordUpdateHistoryResponse:
+      type: object
+      properties:
+        last_update:
+          type: string
+          nullable: true
+          description: Date and time of the last password update in MM/DD/YYYY HH:MM:SS format
+          example: "10/03/2025 14:22:30"
+        updated_by:
+          type: string
+          nullable: true
+          description: User ID of who performed the last password update
+          example: "user-uuid"
+        how_many:
+          type: integer
+          description: Total number of password updates for this user
+          example: 1
+
     UserDetails:
       type: object
       properties:
@@ -2161,6 +2335,66 @@ components:
           type: boolean
           example: true
           description: Operation success indicator
+
+    AdminStatusResponse:
+      type: object
+      properties:
+        totalUsers:
+          type: integer
+          description: Total number of users in the system
+          example: 25
+        totalResources:
+          type: integer
+          description: Total number of resources (excluding WINDBOOKS_APP)
+          example: 10
+        activeUsers:
+          type: integer
+          description: Number of active users
+          example: 20
+        activeResources:
+          type: integer
+          description: Number of active resources
+          example: 8
+        inactiveUsers:
+          type: integer
+          description: Number of inactive users
+          example: 5
+        inactiveResources:
+          type: integer
+          description: Number of inactive resources
+          example: 1
+        deletedUsers:
+          type: integer
+          description: Number of deleted users (currently always 0 as users are not soft-deleted)
+          example: 0
+        deletedResources:
+          type: integer
+          description: Number of deleted resources
+          example: 1
+        totalRoles:
+          type: integer
+          description: Total number of roles in the system
+          example: 15
+      required:
+        - totalUsers
+        - totalResources
+        - activeUsers
+        - activeResources
+        - inactiveUsers
+        - inactiveResources
+        - deletedUsers
+        - deletedResources
+        - totalRoles
+      example:
+        totalUsers: 25
+        totalResources: 10
+        activeUsers: 20
+        activeResources: 8
+        inactiveUsers: 5
+        inactiveResources: 1
+        deletedUsers: 0
+        deletedResources: 1
+        totalRoles: 15
 
 security:
   - bearerAuth: []

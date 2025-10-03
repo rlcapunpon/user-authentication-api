@@ -21,6 +21,7 @@ model User {
   subordinates  UserDetails[]      @relation("ManagerSubordinates")
   verification  UserVerification?
   emailCodes    EmailVerificationCode[]
+  passwordUpdates UserPasswordUpdate[]
 }
 
 model UserDetails {
@@ -125,4 +126,14 @@ model ResourceStatus {
   createdAt  DateTime           @default(now())
   updatedAt  DateTime           @updatedAt
   resource   Resource           @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+}
+
+model UserPasswordUpdate {
+  id         String   @id @default(uuid())
+  userId     String
+  lastUpdate DateTime @default(now())
+  updatedBy  String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

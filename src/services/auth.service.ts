@@ -23,7 +23,9 @@ export const register = async (email: string, password: string) => {
         existingUserId: existingUser.id,
         timestamp: new Date().toISOString(),
       });
-      throw new Error('User already exists');
+      const error = new Error('Email is already used') as Error & { code?: string };
+      error.code = 'EMAIL_ALREADY_EXISTS';
+      throw error;
     }
 
     const user = await createUser(email, password);

@@ -1,9 +1,9 @@
 import { Router } from 'express';
-import { listUsers, getUser, createUser, updateUserSuperAdmin, assignUserResourceRole, revokeUserResourceRole, deactivateUser, activateUser, deleteUser, listUsersV2 } from '../controllers/user.controller';
+import { listUsers, getUser, createUser, updateUserSuperAdmin, assignUserResourceRole, revokeUserResourceRole, deactivateUser, activateUser, deleteUser, listUsersV2, updateUserPassword, getUserPasswordUpdateHistory } from '../controllers/user.controller';
 import { authGuard } from '../middleware/auth.middleware';
 import { rbacGuard, requireSuperAdmin } from '../middleware/rbac.middleware';
 import { validate } from '../middleware/validate';
-import { createUserSchema, updateUserSuperAdminSchema, userIdSchema, paginationQuerySchema } from '../schemas/user.schema';
+import { createUserSchema, updateUserSuperAdminSchema, userIdSchema, paginationQuerySchema, updatePasswordSchema, passwordHistoryUserIdSchema } from '../schemas/user.schema';
 import { assignUserResourceRoleSchema, revokeUserResourceRoleSchema } from '../schemas/resource.schema';
 
 const router = Router();
@@ -303,5 +303,97 @@ router.put('/:id/activate', requireSuperAdmin(), validate(userIdSchema), activat
  *         description: User not found
  */
 router.delete('/:id', rbacGuard(['user:delete']), validate(userIdSchema), deleteUser);
+
+/**
+ * @swagger
+ * /user/update/password:
+ *   post:
+ *     summary: Update user password
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - userId
+ *               - userEmail
+ *               - new_password
+ *               - new_password_confirmation
+ *             properties:
+ *               userId:
+ *                 type: string
+ *                 format: uuid
+ *               userEmail:
+ *                 type: string
+ *                 format: email
+ *               current_password:
+ *                 type: string
+ *                 description: Required for regular users, optional for SUPERADMIN when updating their own password
+ *               new_password:
+ *                 type: string
+ *                 minLength: 6
+ *               new_password_confirmation:
+ *                 type: string
+ *                 minLength: 6
+ *     responses:
+ *       200:
+ *         description: Password updated successfully.
+ *       400:
+ *         description: Bad request - validation error or invalid current password
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - insufficient permissions
+ *       404:
+ *         description: User not found
+ */
+router.post('/update/password', authGuard, validate(updatePasswordSchema), updateUserPassword);
+
+/**
+ * @swagger
+ * /user/last-update/creds/{userId}:
+ *   get:
+ *     summary: Get user password update history
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Password update history retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 last_update:
+ *                   type: string
+ *                   nullable: true
+ *                   example: "10/03/2025 14:22:30"
+ *                 updated_by:
+ *                   type: string
+ *                   nullable: true
+ *                   example: "user-uuid"
+ *                 how_many:
+ *                   type: integer
+ *                   example: 1
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - insufficient permissions
+ *       404:
+ *         description: User not found
+ */
+router.get('/last-update/creds/:userId', authGuard, validate(passwordHistoryUserIdSchema), getUserPasswordUpdateHistory);
 
 export default router;

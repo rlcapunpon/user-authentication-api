@@ -59,6 +59,11 @@ export const register = async (req: Request, res: Response) => {
       } : 'Unknown error',
     });
 
+    // Handle specific error for existing email
+    if (error instanceof Error && (error as Error & { code?: string }).code === 'EMAIL_ALREADY_EXISTS') {
+      return res.status(409).json({ message: error.message });
+    }
+
     handleUnknownError(error, res, 400);
   }
 };

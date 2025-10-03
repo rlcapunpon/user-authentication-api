@@ -14,7 +14,7 @@ export const createUser = async (
   const hashedPassword = await hashPassword(password);
   return prisma.user.create({
     data: {
-      email,
+      email: email.toLowerCase(),
       isSuperAdmin,
       credential: {
         create: {
@@ -50,7 +50,7 @@ export const createUser = async (
 
 export const findUserByEmail = (email: string) => {
   return prisma.user.findUnique({
-    where: { email },
+    where: { email: email.toLowerCase() },
     include: { credential: true },
   });
 };
@@ -269,5 +269,87 @@ export const listUsersPaginated = async (page: number = 1, limit: number = 10, e
       hasNext: page < totalPages,
       hasPrev: page > 1,
     },
+  };
+};
+
+export const updateUserPassword = async (
+  userId: string,
+  newPassword: string,
+  updatedBy: string,
+  requireCurrentPassword: boolean = true,
+  currentPassword?: string
+) => {
+  const user = await (prisma as any).user.findUnique({
+    where: { id: userId },
+    include: { credential: true },
+  });
+
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  if (requireCurrentPassword) {
+    if (!currentPassword || !user.credential) {
+      throw new Error('Current password is required');
+    }
+    const isPasswordValid = await comparePassword(currentPassword, user.credential.passwordHash);
+    if (!isPasswordValid) {
+      throw new Error('Invalid current password');
+    }
+  }
+
+  const hashedPassword = await hashPassword(newPassword);
+
+  // Update password
+  await (prisma as any).credential.update({
+    where: { userId },
+    data: { passwordHash: hashedPassword },
+  });
+
+  // Create password update record
+  await (prisma as any).userPasswordUpdate.create({
+    data: {
+      userId,
+      updatedBy,
+    },
+  });
+
+  return { message: 'Password updated successfully' };
+};
+
+export const getUserPasswordUpdateHistory = async (userId: string) => {
+  const user = await (prisma as any).user.findUnique({
+    where: { id: userId },
+  });
+
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  const updates = await (prisma as any).userPasswordUpdate.findMany({
+    where: { userId },
+    orderBy: { lastUpdate: 'desc' },
+  });
+
+  if (updates.length === 0) {
+    return {
+      last_update: null,
+      updated_by: null,
+      how_many: 0,
+    };
+  }
+
+  const lastUpdate = updates[0];
+  return {
+    last_update: lastUpdate.lastUpdate.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    }),
+    updated_by: lastUpdate.updatedBy,
+    how_many: updates.length,
   };
 };

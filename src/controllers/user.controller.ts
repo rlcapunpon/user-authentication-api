@@ -120,3 +120,61 @@ export const listUsersV2 = async (req: Request, res: Response) => {
     handleUnknownError(error, res, 500);
   }
 };
+
+export const updateUserPassword = async (req: Request, res: Response) => {
+  try {
+    const { userId, userEmail, current_password, new_password } = req.body;
+    const tokenUserId = (req as any).user.userId;
+    const isSuperAdmin = (req as any).user.isSuperAdmin;
+
+    // Check authorization
+    const requireCurrentPassword = !(isSuperAdmin && tokenUserId !== userId);
+    if (!isSuperAdmin && tokenUserId !== userId) {
+      return res.status(403).json({ message: 'Forbidden: Can only update your own password' });
+    }
+
+    const result = await userService.updateUserPassword(
+      userId,
+      new_password,
+      tokenUserId,
+      requireCurrentPassword,
+      current_password
+    );
+
+    res.json(result);
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === 'User not found') {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      if (error.message === 'Invalid current password') {
+        return res.status(400).json({ message: 'Invalid current password' });
+      }
+      if (error.message === 'Current password is required') {
+        return res.status(400).json({ message: 'Current password is required' });
+      }
+    }
+    handleUnknownError(error, res, 500);
+  }
+};
+
+export const getUserPasswordUpdateHistory = async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+    const tokenUserId = (req as any).user.userId;
+    const isSuperAdmin = (req as any).user.isSuperAdmin;
+
+    // Check authorization: only SUPERADMIN or the user themselves can view history
+    if (!isSuperAdmin && tokenUserId !== userId) {
+      return res.status(403).json({ message: 'Forbidden: Can only view your own password update history' });
+    }
+
+    const result = await userService.getUserPasswordUpdateHistory(userId);
+    res.json(result);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'User not found') {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    handleUnknownError(error, res, 500);
+  }
+};

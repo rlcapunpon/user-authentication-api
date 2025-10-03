@@ -36,6 +36,12 @@ export const userIdSchema = z.object({
   }),
 });
 
+export const passwordHistoryUserIdSchema = z.object({
+  params: z.object({
+    userId: z.string().uuid('Invalid user ID format'),
+  }),
+});
+
 export const updateMyProfileSchema = z.object({
   body: z.object({
     email: z.string().email().optional(),
@@ -114,4 +120,23 @@ export const paginatedUsersResponseSchema = z.object({
     hasNext: z.boolean(),
     hasPrev: z.boolean(),
   }),
+});
+
+export const updatePasswordSchema = z.object({
+  body: z.object({
+    userId: z.string().uuid('Invalid user ID format'),
+    userEmail: z.string().email('Invalid email format'),
+    current_password: z.string().optional(),
+    new_password: z.string().min(6, 'New password must be at least 6 characters'),
+    new_password_confirmation: z.string().min(6, 'New password confirmation must be at least 6 characters'),
+  }).refine(data => data.new_password === data.new_password_confirmation, {
+    message: 'New password and confirmation do not match',
+    path: ['new_password_confirmation'],
+  }),
+});
+
+export const passwordLastUpdateResponseSchema = z.object({
+  last_update: z.string().nullable(),
+  updated_by: z.string().nullable(),
+  how_many: z.number(),
 });
