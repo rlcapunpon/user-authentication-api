@@ -112,19 +112,94 @@ export const updateUserSuperAdmin = async (userId: string, isSuperAdmin: boolean
 };
 
 export const assignUserResourceRole = async (userId: string, roleId: string, resourceId?: string) => {
-  // First, assign the requested role
-  const userResourceRole = await (prisma as any).userResourceRole.create({
-    data: {
-      userId,
-      roleId,
-      resourceId,
-    },
-    include: {
-      user: true,
-      role: true,
-      resource: true,
-    },
-  });
+  // Check if user already has a role for this resource
+  let userResourceRole;
+  if (resourceId) {
+    const existingRole = await (prisma as any).userResourceRole.findFirst({
+      where: {
+        userId,
+        resourceId,
+      },
+    });
+
+    if (existingRole) {
+      // Update existing role assignment
+      userResourceRole = await (prisma as any).userResourceRole.update({
+        where: {
+          userId_roleId_resourceId: {
+            userId,
+            roleId: existingRole.roleId,
+            resourceId,
+          },
+        },
+        data: {
+          roleId, // Update to new role
+        },
+        include: {
+          user: true,
+          role: true,
+          resource: true,
+        },
+      });
+    } else {
+      // Create new role assignment
+      userResourceRole = await (prisma as any).userResourceRole.create({
+        data: {
+          userId,
+          roleId,
+          resourceId,
+        },
+        include: {
+          user: true,
+          role: true,
+          resource: true,
+        },
+      });
+    }
+  } else {
+    // For global roles (no resourceId), check if user already has a global role
+    const existingGlobalRole = await (prisma as any).userResourceRole.findFirst({
+      where: {
+        userId,
+        resourceId: null,
+      },
+    });
+
+    if (existingGlobalRole) {
+      // Update existing global role assignment
+      userResourceRole = await (prisma as any).userResourceRole.update({
+        where: {
+          userId_roleId_resourceId: {
+            userId,
+            roleId: existingGlobalRole.roleId,
+            resourceId: null,
+          },
+        },
+        data: {
+          roleId, // Update to new role
+        },
+        include: {
+          user: true,
+          role: true,
+          resource: true,
+        },
+      });
+    } else {
+      // Create new global role assignment
+      userResourceRole = await (prisma as any).userResourceRole.create({
+        data: {
+          userId,
+          roleId,
+          resourceId: null,
+        },
+        include: {
+          user: true,
+          role: true,
+          resource: true,
+        },
+      });
+    }
+  }
 
   // Step 9: When a user is assigned to a resource with a role (not WINDBOOKS_APP),
   // automatically assign the same role to WINDBOOKS_APP if user has no WINDBOOKS_APP role

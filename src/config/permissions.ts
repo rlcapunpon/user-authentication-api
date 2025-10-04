@@ -29,6 +29,7 @@ export const PERMISSIONS = {
   // Resource Management
   RESOURCE_CREATE: 'resource:create',
   RESOURCE_READ: 'resource:read',
+  RESOURCE_OWNER_READ: 'resource:owner_read',
   RESOURCE_UPDATE: 'resource:update',
   RESOURCE_DELETE: 'resource:delete',
   RESOURCE_ACCESS_FULL: 'resource:access_full',
@@ -162,6 +163,7 @@ export const ROLE_PERMISSIONS = {
     // Resource Management - Full access
     PERMISSIONS.RESOURCE_CREATE,
     PERMISSIONS.RESOURCE_READ,
+    PERMISSIONS.RESOURCE_OWNER_READ,
     PERMISSIONS.RESOURCE_UPDATE,
     PERMISSIONS.RESOURCE_DELETE,
     PERMISSIONS.RESOURCE_ACCESS_FULL,
@@ -244,6 +246,7 @@ export const ROLE_PERMISSIONS = {
     // Resource access - assigned only + read permission
     PERMISSIONS.RESOURCE_READ,
     PERMISSIONS.RESOURCE_ACCESS_ASSIGNED,
+    PERMISSIONS.RESOURCE_OWNER_READ,
     
     // User Management - limited (team only)
     PERMISSIONS.USER_VIEW_LIMITED,
@@ -290,6 +293,7 @@ export const ROLE_PERMISSIONS = {
     // Resource access - assigned only + read permission
     PERMISSIONS.RESOURCE_READ,
     PERMISSIONS.RESOURCE_ACCESS_ASSIGNED,
+    PERMISSIONS.RESOURCE_OWNER_READ,
     
     // User Management - limited
     PERMISSIONS.USER_VIEW_LIMITED,

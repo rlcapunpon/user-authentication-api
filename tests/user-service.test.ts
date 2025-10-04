@@ -271,26 +271,49 @@ describe('User Service', () => {
       expect(windbooksAppRoles[0].roleId).toBe(differentRole.id);
     });
 
-    it('should not assign WINDBOOKS_APP role when assigning directly to WINDBOOKS_APP resource', async () => {
-      // Count existing roles before assignment
-      const initialCount = await (prisma as any).userResourceRole.count();
-
-      // Assign role directly to WINDBOOKS_APP
-      await userService.assignUserResourceRole(testUser.id, testRole.id, windbooksAppResource.id);
-
-      // Verify only one role was created
-      const finalCount = await (prisma as any).userResourceRole.count();
-      expect(finalCount).toBe(initialCount + 1);
-
-      // Verify the role was assigned to WINDBOOKS_APP
-      const windbooksAppRole = await (prisma as any).userResourceRole.findFirst({
-        where: {
-          userId: testUser.id,
-          roleId: testRole.id,
-          resourceId: windbooksAppResource.id,
+    it('should overwrite existing role when user already has a different role for the same resource', async () => {
+      // First assign a different role to the user for the same resource
+      const differentRole = await (prisma as any).role.create({
+        data: {
+          name: 'DIFFERENT_ROLE',
+          description: 'Different role for testing overwrite',
+          permissions: ['different:permission'],
         },
       });
-      expect(windbooksAppRole).toBeDefined();
+
+      // Assign the different role first
+      await userService.assignUserResourceRole(testUser.id, differentRole.id, testResource.id);
+
+      // Verify the different role was assigned
+      let userResourceRole = await (prisma as any).userResourceRole.findFirst({
+        where: {
+          userId: testUser.id,
+          resourceId: testResource.id,
+        },
+      });
+      expect(userResourceRole?.roleId).toBe(differentRole.id);
+
+      // Now assign the testRole to the same user and resource - should overwrite
+      await userService.assignUserResourceRole(testUser.id, testRole.id, testResource.id);
+
+      // Verify the role was overwritten with the new role
+      userResourceRole = await (prisma as any).userResourceRole.findFirst({
+        where: {
+          userId: testUser.id,
+          resourceId: testResource.id,
+        },
+      });
+      expect(userResourceRole?.roleId).toBe(testRole.id);
+      expect(userResourceRole?.roleId).not.toBe(differentRole.id);
+
+      // Verify only one role assignment exists for this user-resource combination
+      const allRolesForResource = await (prisma as any).userResourceRole.findMany({
+        where: {
+          userId: testUser.id,
+          resourceId: testResource.id,
+        },
+      });
+      expect(allRolesForResource).toHaveLength(1);
     });
   });
 });
