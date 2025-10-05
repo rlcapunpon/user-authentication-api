@@ -256,16 +256,89 @@ export const getUserResourcesAndRoles = async (req: Request, res: Response) => {
 };
 
 /**
+ * Get user permissions for a specific resource
+ */
+export const getUserPermissionsForResource = async (req: Request, res: Response) => {
+  try {
+    const { resourceId, resourceName } = req.query;
+    const userId = req.user!.userId;
+
+    // Validate that either resourceId or resourceName is provided
+    if (!resourceId && !resourceName) {
+      return res.status(400).json({ 
+        message: 'Either resourceId or resourceName must be provided' 
+      });
+    }
+
+    // Get the resource by ID or name
+    let resource;
+    if (resourceId) {
+      resource = await rbacService.findResourceById(resourceId as string);
+    } else if (resourceName) {
+      resource = await rbacService.findResourceByName(resourceName as string);
+    }
+
+    if (!resource) {
+      return res.status(404).json({ 
+        message: 'Resource not found' 
+      });
+    }
+
+    // Check if user is super admin
+    const user = await rbacService.findUserById(userId);
+    if (user?.isSuperAdmin) {
+      // Super admin has full access to all resources
+      const { ROLE_PERMISSIONS } = await import('../config/permissions');
+      return res.json({
+        resourceId: resource.id,
+        roleId: 'super-admin-role', // Special ID for super admin
+        role: 'SUPERADMIN',
+        permissions: ROLE_PERMISSIONS.SUPERADMIN
+      });
+    }
+
+    // Get user's role for this resource
+    const userResourceRole = await rbacService.getUserRoleForResource(userId, resource.id);
+
+    if (!userResourceRole) {
+      return res.status(404).json({
+        message: 'No role found for this user on the specified resource'
+      });
+    }
+
+    // Get permissions for the role
+    const rolePermissions = await rbacService.getRolePermissions(userResourceRole.roleId);
+
+    res.json({
+      resourceId: resource.id,
+      roleId: userResourceRole.roleId,
+      role: userResourceRole.role.name,
+      permissions: rolePermissions
+    });
+
+  } catch (error) {
+    console.error('Error getting user permissions for resource:', error);
+    res.status(500).json({ message: 'Failed to get user permissions for resource' });
+  }
+};
+
+/**
  * Get resource roles for authenticated user given a list of resourceIds
  */
 export const getResourceRoles = async (req: Request, res: Response) => {
   try {
-    const userId = req.user!.userId;
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: 'User not authenticated' });
+    }
+
     const { resources } = req.body;
+    if (!resources || !Array.isArray(resources) || resources.length === 0) {
+      return res.status(400).json({ message: 'Resources array is required and must not be empty' });
+    }
 
     const result = await rbacService.getResourceRoles(userId, resources);
     res.json(result);
-
   } catch (error) {
     console.error('Error getting resource roles:', error);
     res.status(500).json({ message: 'Failed to get resource roles' });

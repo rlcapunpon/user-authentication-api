@@ -141,6 +141,44 @@ describe('Permissions Endpoints', () => {
       expect(response.body).toEqual(regularUserResponse.body);
     });
 
+    it('should return comprehensive SUPERADMIN permissions when called by admin', async () => {
+      const response = await request(app)
+        .get('/api/permissions')
+        .set('Authorization', `Bearer ${adminUserToken}`);
+
+      expect(response.status).toBe(200);
+      expect(Array.isArray(response.body)).toBe(true);
+      expect(response.body.length).toBeGreaterThan(50); // Should have many permissions
+
+      // Check for SUPERADMIN-specific permissions
+      const superAdminPermissions = [
+        'user:create',
+        'user:read',
+        'user:update', 
+        'user:delete',
+        'user:assign_roles',
+        'user:revoke_roles',
+        'role:create',
+        'role:read', 
+        'role:update',
+        'role:delete',
+        'resource:create',
+        'resource:read',
+        'resource:update',
+        'resource:delete',
+        'system:configure',
+        'audit:read',
+        'permission:create',
+        'permission:read',
+        'permission:update',
+        'permission:delete'
+      ];
+
+      superAdminPermissions.forEach(permission => {
+        expect(response.body).toContain(permission);
+      });
+    });
+
     it('should fail without authentication', async () => {
       const response = await request(app)
         .get('/api/permissions');
@@ -179,6 +217,41 @@ describe('Permissions Endpoints', () => {
       expect(response1.status).toBe(200);
       expect(response2.status).toBe(200);
       expect(response1.body).toEqual(response2.body);
+    });
+  });
+
+  describe('SUPERADMIN Role and Token Validation', () => {
+    it('should verify SUPERADMIN user token contains correct role and permissions', async () => {
+      // Decode the admin JWT token to verify its contents
+      const jwt = require('jsonwebtoken');
+      const decoded = jwt.decode(adminUserToken);
+
+      expect(decoded).toBeTruthy();
+      expect(decoded).toHaveProperty('userId', adminUserId);
+      expect(decoded).toHaveProperty('isSuperAdmin', true);
+      expect(decoded).toHaveProperty('role', 'Super Admin');
+      expect(decoded).toHaveProperty('permissions');
+      
+      // SUPERADMIN should have all permissions (*)
+      expect(Array.isArray(decoded.permissions)).toBe(true);
+      expect(decoded.permissions).toContain('*');
+    });
+
+    it('should verify regular user token does NOT have SUPERADMIN privileges', async () => {
+      // Decode the regular user JWT token to verify its contents
+      const jwt = require('jsonwebtoken');
+      const decoded = jwt.decode(testUserToken);
+
+      expect(decoded).toBeTruthy();
+      expect(decoded).toHaveProperty('userId', testUserId);
+      expect(decoded).toHaveProperty('isSuperAdmin', false);
+      expect(decoded).toHaveProperty('role', 'Read Permissions Role');
+      expect(decoded).toHaveProperty('permissions');
+      
+      // Regular user should not have all permissions
+      expect(Array.isArray(decoded.permissions)).toBe(true);
+      expect(decoded.permissions).not.toContain('*');
+      expect(decoded.permissions).toContain('permission:read');
     });
   });
 
@@ -326,6 +399,59 @@ describe('Permissions Endpoints', () => {
       expect(response.body).toHaveProperty('reason', 'super_admin');
       expect(response.body).toHaveProperty('checkedPermission', 'nonexistent:permission');
       expect(response.body).toHaveProperty('resourceId', testResourceId);
+    });
+
+    it('should verify SUPERADMIN role has access to all system permissions', async () => {
+      const systemPermissions = [
+        'system:configure',
+        'user:delete',
+        'role:delete',
+        'resource:delete',
+        'audit:read',
+        'permission:delete'
+      ];
+
+      for (const permission of systemPermissions) {
+        const response = await request(app)
+          .post('/api/permissions/check')
+          .set('Authorization', `Bearer ${adminUserToken}`)
+          .send({
+            userId: adminUserId,
+            permission: permission,
+            resourceId: testResourceId,
+          });
+
+        expect(response.status).toBe(200);
+        expect(response.body).toHaveProperty('hasPermission', true);
+        expect(response.body).toHaveProperty('reason', 'super_admin');
+        expect(response.body).toHaveProperty('checkedPermission', permission);
+      }
+    });
+
+    it('should verify regular user does NOT have SUPERADMIN permissions', async () => {
+      const superAdminOnlyPermissions = [
+        'system:configure',
+        'user:delete',
+        'role:delete',
+        'resource:delete',
+        'audit:read'
+      ];
+
+      for (const permission of superAdminOnlyPermissions) {
+        const response = await request(app)
+          .post('/api/permissions/check')
+          .set('Authorization', `Bearer ${adminUserToken}`)
+          .send({
+            userId: testUserId, // Regular user, not admin
+            permission: permission,
+            resourceId: testResourceId,
+          });
+
+        expect(response.status).toBe(200);
+        expect(response.body).toHaveProperty('hasPermission', false);
+        expect(response.body).toHaveProperty('checkedPermission', permission);
+        expect(response.body).not.toHaveProperty('reason', 'super_admin');
+      }
     });
 
     it('should return 400 when userId is missing', async () => {

@@ -501,3 +501,61 @@ export const softDeleteResource = async (resourceId: string): Promise<void> => {
   });
 };
 
+/**
+ * Find a resource by ID
+ */
+export const findResourceById = async (resourceId: string) => {
+  return prisma.resource.findUnique({
+    where: { id: resourceId },
+  });
+};
+
+/**
+ * Find a resource by name
+ */
+export const findResourceByName = async (resourceName: string) => {
+  return prisma.resource.findFirst({
+    where: { name: resourceName },
+  });
+};
+
+/**
+ * Get permissions for a specific role
+ */
+export const getRolePermissions = async (roleId: string) => {
+  const role = await prisma.role.findUnique({
+    where: { id: roleId },
+    select: { permissions: true },
+  });
+
+  if (!role) {
+    throw new Error('Role not found');
+  }
+
+  return role.permissions;
+};
+
+/**
+ * Get resource roles for a user given a list of resourceIds
+ */
+export const getUserResourceRoles = async (userId: string, resourceIds: string[]) => {
+  const userResourceRoles = await prisma.userResourceRole.findMany({
+    where: {
+      userId,
+      resourceId: {
+        in: resourceIds,
+      },
+    },
+    include: {
+      role: true,
+      resource: true,
+    },
+  });
+
+  return userResourceRoles.map((urr) => ({
+    resourceId: urr.resourceId,
+    roleName: urr.role.name,
+    roleId: urr.roleId,
+  }));
+};
+

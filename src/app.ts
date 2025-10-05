@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 
 import { authRoutes, rolesRoutes, permissionsRoutes, oidcRoutes, usersRoutes, userSpecificRouter, configRoutes, resourcesRoutes, userDetailsRoutes, adminRoutes, passwordResetRoutes } from './routes';
 import { authGuard } from './middleware/auth.middleware';
+import { getUserPermissionsForResource } from './controllers/rbac.controller';
 import { swaggerSpec } from './config/swagger';
 import { logger } from './utils/logger';
 
@@ -97,6 +98,8 @@ app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use('/api/auth', authRoutes);
 app.use('/api/roles', rolesRoutes);
 app.use('/api/permissions', permissionsRoutes);
+// Add specific route for GET /api/permission (separate from /api/permissions)
+app.get('/api/permission', authGuard, getUserPermissionsForResource);
 app.use('/api/users', usersRoutes);
 app.use('/api/user', userSpecificRouter);
 app.use('/api/config', configRoutes);

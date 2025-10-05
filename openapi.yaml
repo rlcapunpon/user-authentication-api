@@ -1607,6 +1607,82 @@ paths:
         '404':
           description: User not found
 
+  /permission:
+    get:
+      tags: [Permissions]
+      summary: Get user permissions for a specific resource
+      description: |
+        Retrieve the authenticated user's role and permissions for a specific resource.
+        
+        **Authentication Required**: This endpoint requires a valid JWT Bearer token.
+        
+        **Query Parameters**: Must provide either `resourceId` or `resourceName` (but not both).
+        
+        **Authorization**:
+        - Users can only view their own permissions
+        - Super admins have implicit access to all resources
+        - Regular users must have a role assigned to the resource (either specific or global)
+        
+        **Response**: Returns the user's role and permissions for the requested resource
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: resourceId
+          schema:
+            type: string
+          description: The unique identifier of the resource
+          example: "cmga8vhx10000n3q4mqfdvqea"
+        - in: query
+          name: resourceName
+          schema:
+            type: string
+          description: The name of the resource
+          example: "Organization A"
+      responses:
+        '200':
+          description: User permissions retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResourcePermissionsResponse'
+              example:
+                resourceId: "cmga8vhx10000n3q4mqfdvqea"
+                roleId: "cmga8vhx50002n3q4abc123def"
+                role: "STAFF"
+                permissions: ["user:read", "resource:read"]
+        '400':
+          description: Bad request - missing or invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "Either resourceId or resourceName must be provided"
+        '401':
+          description: Unauthorized - missing or invalid JWT token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "Authentication required"
+        '404':
+          description: Resource not found or user has no role for the specified resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                resource_not_found:
+                  summary: Resource does not exist
+                  value:
+                    message: "Resource not found"
+                no_role:
+                  summary: User has no role for this resource
+                  value:
+                    message: "No role found for this user on the specified resource"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -2488,6 +2564,33 @@ components:
           description: Array of JSON Web Keys
 
     # Common schemas
+    UserResourcePermissionsResponse:
+      type: object
+      required:
+        - resourceId
+        - roleId
+        - role
+        - permissions
+      properties:
+        resourceId:
+          type: string
+          description: The unique identifier of the resource
+          example: "cmga8vhx10000n3q4mqfdvqea"
+        roleId:
+          type: string
+          description: The unique identifier of the user's role for this resource
+          example: "cmga8vhx50002n3q4abc123def"
+        role:
+          type: string
+          description: The name of the user's role for this resource
+          example: "STAFF"
+        permissions:
+          type: array
+          items:
+            type: string
+          description: Array of permission verbs the user has for this resource
+          example: ["user:read", "resource:read"]
+
     Error:
       type: object
       properties:

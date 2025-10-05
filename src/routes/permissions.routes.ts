@@ -3,6 +3,7 @@ import { authGuard } from '../middleware/auth.middleware';
 import { rbacGuard } from '../middleware/rbac.middleware';
 import { getAllPermissions } from '../config/permissions';
 import { checkUserPermission } from '../controllers/rbac.controller';
+
 import { validate } from '../middleware/validate';
 import { checkUserPermissionSchema } from '../schemas/resource.schema';
 
@@ -112,5 +113,7 @@ router.get('/', authGuard, (req, res) => {
  *         description: Internal server error
  */
 router.post('/check', authGuard, rbacGuard(['user:read']), validate(checkUserPermissionSchema), checkUserPermission);
+
+
 
 export default router;
