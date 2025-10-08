@@ -73,7 +73,7 @@ export const createResource = async (name: string, description?: string, id?: st
   });
 
   // Create ResourceStatus record with ACTIVE status
-  await (prisma as any).resourceStatus.create({
+  await prisma.resourceStatus.create({
     data: {
       resourceId: resource.id,
       status: 'ACTIVE',
@@ -186,7 +186,7 @@ export const getUserAccessibleResources = async (userId: string): Promise<any[]>
   }
 
   if (isSuperAdminForWindbooks) {
-    return (prisma as any).resource.findMany({
+    return prisma.resource.findMany({
       where: {
         status: {
           status: 'ACTIVE',
@@ -196,7 +196,7 @@ export const getUserAccessibleResources = async (userId: string): Promise<any[]>
   }
 
   // Get resources where user has UserResourceRole entries (either specific or global) and not deleted
-  const userResources = await (prisma as any).resource.findMany({
+  const userResources = await prisma.resource.findMany({
     where: {
       userRoles: {
         some: {
@@ -356,7 +356,7 @@ export const getUserAccessibleResourcesPaginated = async (
 
   if (isSuperAdminForWindbooks) {
     const [resources, total] = await Promise.all([
-      (prisma as any).resource.findMany({
+      prisma.resource.findMany({
         where: {
           ...where,
           status: {
@@ -369,7 +369,7 @@ export const getUserAccessibleResourcesPaginated = async (
           createdAt: 'desc',
         },
       }),
-      (prisma as any).resource.count({
+      prisma.resource.count({
         where: {
           ...where,
           status: {
@@ -396,7 +396,7 @@ export const getUserAccessibleResourcesPaginated = async (
 
   // Get resources where user has UserResourceRole entries (either specific or global) - paginated with filters and exclude deleted
   const [userResources, total] = await Promise.all([
-    (prisma as any).resource.findMany({
+    prisma.resource.findMany({
       where: {
         ...where,
         userRoles: {
@@ -414,7 +414,7 @@ export const getUserAccessibleResourcesPaginated = async (
         createdAt: 'desc',
       },
     }),
-    (prisma as any).resource.count({
+    prisma.resource.count({
       where: {
         ...where,
         userRoles: {
@@ -541,7 +541,7 @@ export const getResourceRoles = async (userId: string, resourceIds: string[]): P
 
 export const softDeleteResource = async (resourceId: string): Promise<void> => {
   // Check if resource exists
-  const resource = await (prisma as any).resource.findUnique({
+  const resource = await prisma.resource.findUnique({
     where: { id: resourceId },
     include: { status: true },
   });
@@ -556,7 +556,7 @@ export const softDeleteResource = async (resourceId: string): Promise<void> => {
   }
 
   // Create or update ResourceStatus to DELETED
-  await (prisma as any).resourceStatus.upsert({
+  await prisma.resourceStatus.upsert({
     where: { resourceId },
     update: {
       status: 'DELETED',

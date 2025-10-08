@@ -759,7 +759,7 @@ describe('Resources Endpoints', () => {
         .set('Authorization', `Bearer ${adminUserToken}`)
         .send(secondResource);
 
-      expect(secondResponse.status).toBe(500); // Prisma unique constraint violation
+      expect(secondResponse.status).toBe(409); // Prisma unique constraint violation
     });
 
     it('should fail without required name field', async () => {

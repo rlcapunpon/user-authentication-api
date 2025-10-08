@@ -65,6 +65,13 @@ export const createResource = async (req: Request, res: Response) => {
     const resource = await rbacService.createResource(name, description, id);
     res.status(201).json(resource);
   } catch (error) {
+    // Handle specific Prisma errors
+    if ((error as any)?.code === 'P2002') {
+      // Unique constraint violation
+      res.status(409).json({ message: 'Resource with this name already exists' });
+      return;
+    }
+
     console.error('Error creating resource:', error);
     res.status(500).json({ message: 'Failed to create resource' });
   }
