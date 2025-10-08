@@ -1693,6 +1693,295 @@ paths:
                   value:
                     message: "No role found for this user on the specified resource"
 
+  # Internal API Endpoints
+  /internal/resources:
+    get:
+      summary: Get all resources (Internal API)
+      tags: [Internal Resources]
+      security:
+        - apiKeyAuth: []
+      responses:
+        '200':
+          description: List of resources retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Resource'
+        '401':
+          description: Invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      summary: Create a new resource (Internal API)
+      tags: [Internal Resources]
+      security:
+        - apiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateResourceRequest'
+      responses:
+        '201':
+          description: Resource created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Resource already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /internal/auth/me/{userId}:
+    get:
+      summary: Get user profile by user ID (Internal API)
+      tags: [Internal Auth]
+      security:
+        - apiKeyAuth: []
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: User ID
+      responses:
+        '200':
+          description: User profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /internal/roles:
+    get:
+      summary: Get all roles with their permissions (Internal API)
+      tags: [Internal Roles]
+      security:
+        - apiKeyAuth: []
+      responses:
+        '200':
+          description: List of roles retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Role'
+        '401':
+          description: Invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /internal/roles/available:
+    get:
+      summary: Get all available roles (Internal API)
+      tags: [Internal Roles]
+      security:
+        - apiKeyAuth: []
+      responses:
+        '200':
+          description: List of available roles retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AvailableRole'
+        '401':
+          description: Invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /internal/permissions/check:
+    post:
+      summary: Check if a user has specific permission on a resource (Internal API)
+      tags: [Internal Permissions]
+      security:
+        - apiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckUserPermissionRequest'
+      responses:
+        '200':
+          description: Permission check result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckUserPermissionResponse'
+        '401':
+          description: Invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /internal/resources/assign-role:
+    post:
+      summary: Assign a role to a user for a specific resource (Internal API)
+      tags: [Internal Resources]
+      security:
+        - apiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignUserResourceRole'
+      responses:
+        '200':
+          description: Role assigned successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '401':
+          description: Invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User, resource, or role not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /internal/resources/revoke-role:
+    post:
+      summary: Revoke a role from a user for a specific resource (Internal API)
+      tags: [Internal Resources]
+      security:
+        - apiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RevokeUserResourceRole'
+      responses:
+        '200':
+          description: Role revoked successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '401':
+          description: Invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User, resource, or role not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /internal/permission:
+    get:
+      summary: Get user permissions for dashboard overview (Internal API)
+      tags: [Internal Permissions]
+      security:
+        - apiKeyAuth: []
+      parameters:
+        - in: query
+          name: userId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: User ID
+        - in: query
+          name: resourceId
+          schema:
+            type: string
+          description: Resource ID (optional)
+        - in: query
+          name: resourceName
+          schema:
+            type: string
+          description: Resource name (optional)
+      responses:
+        '200':
+          description: User permissions retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResourcePermissionsResponse'
+        '401':
+          description: Invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
 components:
   securitySchemes:
     bearerAuth:
@@ -2680,294 +2969,6 @@ components:
         deletedUsers: 0
         deletedResources: 1
         totalRoles: 15
-
-  /internal/resources:
-    get:
-      summary: Get all resources (Internal API)
-      tags: [Internal Resources]
-      security:
-        - apiKeyAuth: []
-      responses:
-        '200':
-          description: List of resources retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Resource'
-        '401':
-          description: Invalid API key
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-    post:
-      summary: Create a new resource (Internal API)
-      tags: [Internal Resources]
-      security:
-        - apiKeyAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreateResourceRequest'
-      responses:
-        '201':
-          description: Resource created successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Resource'
-        '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Invalid API key
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '409':
-          description: Resource already exists
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /internal/auth/me/{userId}:
-    get:
-      summary: Get user profile by user ID (Internal API)
-      tags: [Internal Auth]
-      security:
-        - apiKeyAuth: []
-      parameters:
-        - in: path
-          name: userId
-          required: true
-          schema:
-            type: string
-            format: uuid
-          description: User ID
-      responses:
-        '200':
-          description: User profile retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
-        '401':
-          description: Invalid API key
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: User not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /internal/roles:
-    get:
-      summary: Get all roles with their permissions (Internal API)
-      tags: [Internal Roles]
-      security:
-        - apiKeyAuth: []
-      responses:
-        '200':
-          description: List of roles retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Role'
-        '401':
-          description: Invalid API key
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /internal/roles/available:
-    get:
-      summary: Get all available roles (Internal API)
-      tags: [Internal Roles]
-      security:
-        - apiKeyAuth: []
-      responses:
-        '200':
-          description: List of available roles retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/AvailableRole'
-        '401':
-          description: Invalid API key
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /internal/permissions/check:
-    post:
-      summary: Check if a user has specific permission on a resource (Internal API)
-      tags: [Internal Permissions]
-      security:
-        - apiKeyAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CheckUserPermissionRequest'
-      responses:
-        '200':
-          description: Permission check result
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CheckUserPermissionResponse'
-        '401':
-          description: Invalid API key
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /internal/resources/assign-role:
-    post:
-      summary: Assign a role to a user for a specific resource (Internal API)
-      tags: [Internal Resources]
-      security:
-        - apiKeyAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AssignUserResourceRole'
-      responses:
-        '200':
-          description: Role assigned successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Success'
-        '401':
-          description: Invalid API key
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: User, resource, or role not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /internal/resources/revoke-role:
-    post:
-      summary: Revoke a role from a user for a specific resource (Internal API)
-      tags: [Internal Resources]
-      security:
-        - apiKeyAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RevokeUserResourceRole'
-      responses:
-        '200':
-          description: Role revoked successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Success'
-        '401':
-          description: Invalid API key
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: User, resource, or role not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /internal/permission:
-    get:
-      summary: Get user permissions for dashboard overview (Internal API)
-      tags: [Internal Permissions]
-      security:
-        - apiKeyAuth: []
-      parameters:
-        - in: query
-          name: userId
-          required: true
-          schema:
-            type: string
-            format: uuid
-          description: User ID
-        - in: query
-          name: resourceId
-          schema:
-            type: string
-          description: Resource ID (optional)
-        - in: query
-          name: resourceName
-          schema:
-            type: string
-          description: Resource name (optional)
-      responses:
-        '200':
-          description: User permissions retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserResourcePermissionsResponse'
-        '401':
-          description: Invalid API key
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
 
 security:
   - bearerAuth: []

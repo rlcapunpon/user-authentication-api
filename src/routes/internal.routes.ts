@@ -3,13 +3,12 @@ import { apiKeyAuth } from '../middleware/apiKey.middleware';
 import { validate } from '../middleware/validate';
 import {
   createResource,
-  getUserRoleForResource,
   getUserResourcesAndRoles,
   getResourceRoles
 } from '../controllers/rbac.controller';
 import { assignUserResourceRole, revokeUserResourceRole } from '../controllers/user.controller';
 import { getMe } from '../controllers/auth.controller';
-import { getAllRoles, getAvailableRoles, getAllResources } from '../services/rbac.service';
+import { getAllRoles, getAvailableRoles, getAllResources, findResourceById, findResourceByName, findUserById, getUserRoleForResource, getRolePermissions } from '../services/rbac.service';
 import { checkUserPermission, getUserPermissionsForResource } from '../controllers/rbac.controller';
 import {
   createResourceSchema,
@@ -277,6 +276,81 @@ router.post('/resources/assign-role', validate(assignUserResourceRoleSchema), as
  */
 router.post('/resources/revoke-role', validate(revokeUserResourceRoleSchema), revokeUserResourceRole);
 
+router.post('/resources/revoke-role', validate(revokeUserResourceRoleSchema), revokeUserResourceRole);
+
+/**
+ * Get user permissions for a specific resource (Internal API version)
+ */
+const getInternalUserPermissionsForResource = async (req: Request, res: Response) => {
+  try {
+    const { userId, resourceId, resourceName } = req.query;
+
+    // Validate that userId is provided
+    if (!userId) {
+      return res.status(400).json({ 
+        message: 'userId query parameter is required' 
+      });
+    }
+
+    // Validate that either resourceId or resourceName is provided
+    if (!resourceId && !resourceName) {
+      return res.status(400).json({ 
+        message: 'Either resourceId or resourceName must be provided' 
+      });
+    }
+
+    // Get the resource by ID or name
+    let resource;
+    if (resourceId) {
+      resource = await findResourceById(resourceId as string);
+    } else if (resourceName) {
+      resource = await findResourceByName(resourceName as string);
+    }
+
+    if (!resource) {
+      return res.status(404).json({ 
+        message: 'Resource not found' 
+      });
+    }
+
+    // Check if user is super admin
+    const user = await findUserById(userId as string);
+    if (user?.isSuperAdmin) {
+      // Super admin has full access to all resources
+      const { ROLE_PERMISSIONS } = await import('../config/permissions');
+      return res.json({
+        resourceId: resource.id,
+        roleId: 'super-admin-role', // Special ID for super admin
+        role: 'SUPERADMIN',
+        permissions: ROLE_PERMISSIONS.SUPERADMIN
+      });
+    }
+
+    // Get user's role for this resource
+    const userResourceRole = await getUserRoleForResource(userId as string, resource.id);
+
+    if (!userResourceRole) {
+      return res.status(404).json({
+        message: 'No role found for this user on the specified resource'
+      });
+    }
+
+    // Get permissions for the role
+    const rolePermissions = await getRolePermissions(userResourceRole.roleId);
+
+    res.json({
+      resourceId: resource.id,
+      roleId: userResourceRole.roleId,
+      role: userResourceRole.role.name,
+      permissions: rolePermissions
+    });
+
+  } catch (error) {
+    console.error('Error getting user permissions for resource (internal):', error);
+    res.status(500).json({ message: 'Failed to get user permissions for resource' });
+  }
+};
+
 /**
  * @swagger
  * /internal/permissions/check:
@@ -310,6 +384,6 @@ router.post('/resources/revoke-role', validate(revokeUserResourceRoleSchema), re
  *       400:
  *         description: Bad request
  */
-router.get('/permission', getUserPermissionsForResource);
+router.get('/permission', getInternalUserPermissionsForResource);
 
 export default router;
