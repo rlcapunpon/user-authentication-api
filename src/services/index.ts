@@ -18,3 +18,4 @@ export * from './config.service';
 export * from './emailVerification.service';
 export * from './email.service';
 export * from './admin.service';
+export * from './apiKey.service';

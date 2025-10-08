@@ -8,3 +8,4 @@ export { default as resourcesRoutes } from './resources.routes';
 export { default as userDetailsRoutes } from './userDetails.routes';
 export { default as adminRoutes } from './admin.routes';
 export { default as passwordResetRoutes } from './passwordReset.routes';
+export { default as internalRoutes } from './internal.routes';

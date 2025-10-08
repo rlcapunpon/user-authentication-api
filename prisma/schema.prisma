@@ -161,3 +161,11 @@ model PasswordResetRequests {
   @@unique([userEmail])
   @@index([userId])
 }
+
+model ApiKey {
+  id        String   @id @default(uuid())
+  owner     String
+  keyHash   String   @unique
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+}

@@ -13,3 +13,6 @@ export const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS || '';
 export const LOG_LEVEL = process.env.LOG_LEVEL || 'DEBUG';
 
 export const JWT_SIGNING_ALGORITHM = 'HS256'; // Force to HS256
+
+export const HMAC_SECRET = process.env.HMAC_SECRET || 'default-hmac-secret';
+export const ORG_API_HMAC = process.env.ORG_API_HMAC || 'default-org-api-hmac';

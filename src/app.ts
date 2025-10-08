@@ -3,7 +3,7 @@ import cors from 'cors';
 import swaggerUi from 'swagger-ui-express';
 import dotenv from 'dotenv';
 
-import { authRoutes, rolesRoutes, permissionsRoutes, oidcRoutes, usersRoutes, userSpecificRouter, configRoutes, resourcesRoutes, userDetailsRoutes, adminRoutes, passwordResetRoutes } from './routes';
+import { authRoutes, rolesRoutes, permissionsRoutes, oidcRoutes, usersRoutes, userSpecificRouter, configRoutes, resourcesRoutes, userDetailsRoutes, adminRoutes, passwordResetRoutes, internalRoutes } from './routes';
 import { authGuard } from './middleware/auth.middleware';
 import { getUserPermissionsForResource } from './controllers/rbac.controller';
 import { swaggerSpec } from './config/swagger';
@@ -108,6 +108,7 @@ app.use('/api/user-details', userDetailsRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/user/auth', passwordResetRoutes); // Password reset routes under /api/user/auth
 app.use('/api', oidcRoutes); // OIDC routes under /api
+app.use('/api/internal', internalRoutes); // Internal API routes under /api/internal
 
 app.get('/health', (req: Request, res: Response) => {
   res.status(200).send('OK');

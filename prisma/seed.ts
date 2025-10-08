@@ -343,6 +343,33 @@ async function main() {
     });
   }
 
+  // Seed API keys for internal services
+  console.log('Creating API keys for internal services...');
+
+  const apiKeys = [
+    {
+      owner: 'org-mgmt-api',
+      keyHash: process.env.ORG_API_HMAC
+    },
+  ];
+
+  for (const apiKeyData of apiKeys) {
+    const existingApiKey = await (prisma as any).apiKey.findFirst({
+      where: {
+        owner: apiKeyData.owner,
+      },
+    });
+
+    if (!existingApiKey) {
+      await (prisma as any).apiKey.create({
+        data: {
+          owner: apiKeyData.owner,
+          keyHash: apiKeyData.keyHash,
+        },
+      });
+    }
+  }
+
   console.log('✅ Seeding completed successfully');
 }
 
