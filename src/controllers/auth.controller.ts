@@ -221,6 +221,70 @@ export const getMe = async (req: Request, res: Response) => {
   }
 };
 
+export const getUserById = async (req: Request, res: Response) => {
+  const { userId } = req.params;
+
+  logger.debug({
+    msg: 'GetUserById endpoint called (Internal API)',
+    userId,
+    ip: req.ip,
+    userAgent: req.get('User-Agent'),
+    method: req.method,
+    path: req.path,
+    headers: {
+      'content-length': req.get('content-length'),
+      'content-type': req.get('content-type'),
+      'x-api-key': req.get('x-api-key') ? '[PRESENT]' : '[MISSING]',
+      'user-agent': req.get('user-agent'),
+    },
+  });
+
+  try {
+    const user = await authService.getMe(userId);
+
+    logger.debug({
+      msg: 'GetUserById successful (Internal API)',
+      userId,
+      ip: req.ip,
+      hasDetails: !!user.details,
+      hasReportTo: !!(user.details?.reportTo),
+      resourcesCount: user.resources?.length || 0,
+    });
+
+    const responseData = JSON.stringify(user);
+    logger.debug({
+      msg: 'GetUserById response prepared (Internal API)',
+      userId,
+      ip: req.ip,
+      responseSize: responseData.length,
+    });
+
+    res.json(user);
+  } catch (error) {
+    logger.error({
+      msg: 'GetUserById endpoint error (Internal API)',
+      userId,
+      ip: req.ip,
+      userAgent: req.get('User-Agent'),
+      method: req.method,
+      path: req.path,
+      error: error instanceof Error ? {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+      } : 'Unknown error',
+      statusCode: res.statusCode,
+    });
+
+    // Handle specific Prisma errors
+    if (error instanceof Error && (error as any).code === 'P2025') {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    handleUnknownError(error, res, 500);
+  }
+};
+
 export const validate = async (req: Request, res: Response) => {
   try {
     const { token } = req.body;

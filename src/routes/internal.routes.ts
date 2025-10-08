@@ -8,7 +8,7 @@ import {
   getResourceRoles
 } from '../controllers/rbac.controller';
 import { assignUserResourceRole, revokeUserResourceRole } from '../controllers/user.controller';
-import { getMe } from '../controllers/auth.controller';
+import { getMe, getUserById } from '../controllers/auth.controller';
 import { getAllRoles, getAvailableRoles, getAllResources, findResourceById, findResourceByName, findUserById, getUserRoleForResource, getRolePermissions } from '../services/rbac.service';
 import { checkUserPermission, getUserPermissionsForResource } from '../controllers/rbac.controller';
 import {
@@ -227,7 +227,7 @@ router.post('/resources', validate(createResourceSchema), createResource);
  *       404:
  *         description: User not found
  */
-router.get('/auth/me/:userId', getMe);
+router.get('/auth/me/:userId', getUserById);
 
 /**
  * @swagger
