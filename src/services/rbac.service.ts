@@ -162,17 +162,34 @@ export const getUserPermissionsFromRoles = async (userId: string, resourceId: st
  * Get resources that a user has access to based on their roles
  */
 export const getUserAccessibleResources = async (userId: string): Promise<any[]> => {
-  // If user is super admin, return all resources except deleted ones
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { isSuperAdmin: true }
+  // Check if user has SUPERADMIN role for WINDBOOKS_APP resource
+  const windbooksAppResource = await prisma.resource.findFirst({
+    where: { name: 'WINDBOOKS_APP' },
   });
 
-  if (user?.isSuperAdmin) {
+  let isSuperAdminForWindbooks = false;
+  if (windbooksAppResource) {
+    const superAdminRole = await prisma.role.findFirst({
+      where: { name: 'SUPERADMIN' },
+    });
+
+    if (superAdminRole) {
+      const userSuperAdminRole = await prisma.userResourceRole.findFirst({
+        where: {
+          userId,
+          resourceId: windbooksAppResource.id,
+          roleId: superAdminRole.id,
+        },
+      });
+      isSuperAdminForWindbooks = !!userSuperAdminRole;
+    }
+  }
+
+  if (isSuperAdminForWindbooks) {
     return (prisma as any).resource.findMany({
       where: {
         status: {
-          is: null, // No status record means ACTIVE
+          status: 'ACTIVE',
         },
       },
     });
@@ -187,7 +204,7 @@ export const getUserAccessibleResources = async (userId: string): Promise<any[]>
         },
       },
       status: {
-        is: null, // No status record means ACTIVE
+        status: 'ACTIVE',
       },
     },
     include: {
@@ -210,13 +227,30 @@ export const getUserAccessibleResources = async (userId: string): Promise<any[]>
  * Get the role of a user for a specific resource
  */
 export const getUserRoleForResource = async (userId: string, resourceId: string): Promise<any> => {
-  // If user is super admin, they have implicit full access, but we'll return null to indicate no specific role
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { isSuperAdmin: true }
+  // Check if user has SUPERADMIN role for WINDBOOKS_APP resource
+  const windbooksAppResource = await prisma.resource.findFirst({
+    where: { name: 'WINDBOOKS_APP' },
   });
 
-  if (user?.isSuperAdmin) {
+  let isSuperAdminForWindbooks = false;
+  if (windbooksAppResource) {
+    const superAdminRole = await prisma.role.findFirst({
+      where: { name: 'SUPERADMIN' },
+    });
+
+    if (superAdminRole) {
+      const userSuperAdminRole = await prisma.userResourceRole.findFirst({
+        where: {
+          userId,
+          resourceId: windbooksAppResource.id,
+          roleId: superAdminRole.id,
+        },
+      });
+      isSuperAdminForWindbooks = !!userSuperAdminRole;
+    }
+  }
+
+  if (isSuperAdminForWindbooks) {
     // Super admin has implicit full access, but we'll return null to indicate no specific role
     return null;
   }
@@ -297,19 +331,36 @@ export const getUserAccessibleResourcesPaginated = async (
     ];
   }
 
-  // If user is super admin, return all resources paginated with filters
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { isSuperAdmin: true }
+  // Check if user has SUPERADMIN role for WINDBOOKS_APP resource
+  const windbooksAppResource = await prisma.resource.findFirst({
+    where: { name: 'WINDBOOKS_APP' },
   });
 
-  if (user?.isSuperAdmin) {
+  let isSuperAdminForWindbooks = false;
+  if (windbooksAppResource) {
+    const superAdminRole = await prisma.role.findFirst({
+      where: { name: 'SUPERADMIN' },
+    });
+
+    if (superAdminRole) {
+      const userSuperAdminRole = await prisma.userResourceRole.findFirst({
+        where: {
+          userId,
+          resourceId: windbooksAppResource.id,
+          roleId: superAdminRole.id,
+        },
+      });
+      isSuperAdminForWindbooks = !!userSuperAdminRole;
+    }
+  }
+
+  if (isSuperAdminForWindbooks) {
     const [resources, total] = await Promise.all([
       (prisma as any).resource.findMany({
         where: {
           ...where,
           status: {
-            is: null, // No status record means ACTIVE
+            status: 'ACTIVE',
           },
         },
         skip,
@@ -322,7 +373,7 @@ export const getUserAccessibleResourcesPaginated = async (
         where: {
           ...where,
           status: {
-            is: null, // No status record means ACTIVE
+            status: 'ACTIVE',
           },
         },
       }),
@@ -354,7 +405,7 @@ export const getUserAccessibleResourcesPaginated = async (
           },
         },
         status: {
-          is: null, // No status record means ACTIVE
+          status: 'ACTIVE',
         },
       },
       skip,
@@ -372,7 +423,7 @@ export const getUserAccessibleResourcesPaginated = async (
           },
         },
         status: {
-          is: null, // No status record means ACTIVE
+          status: 'ACTIVE',
         },
       },
     }),
@@ -429,13 +480,30 @@ export const getUserResourcesAndRoles = async (userId: string): Promise<{ resour
  * Get resource roles for authenticated user given a list of resourceIds
  */
 export const getResourceRoles = async (userId: string, resourceIds: string[]): Promise<{ resourceRoles: Array<{ resourceId: string; roleName: string; roleId: string }> }> => {
-  // Check if user is super admin
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { isSuperAdmin: true }
+  // Check if user has SUPERADMIN role for WINDBOOKS_APP resource
+  const windbooksAppResource = await prisma.resource.findFirst({
+    where: { name: 'WINDBOOKS_APP' },
   });
 
-  if (user?.isSuperAdmin) {
+  let isSuperAdminForWindbooks = false;
+  if (windbooksAppResource) {
+    const superAdminRole = await prisma.role.findFirst({
+      where: { name: 'SUPERADMIN' },
+    });
+
+    if (superAdminRole) {
+      const userSuperAdminRole = await prisma.userResourceRole.findFirst({
+        where: {
+          userId,
+          resourceId: windbooksAppResource.id,
+          roleId: superAdminRole.id,
+        },
+      });
+      isSuperAdminForWindbooks = !!userSuperAdminRole;
+    }
+  }
+
+  if (isSuperAdminForWindbooks) {
     // Super admin has access to all requested resources - return super admin roles for all
     const result = [];
     for (const resourceId of resourceIds) {

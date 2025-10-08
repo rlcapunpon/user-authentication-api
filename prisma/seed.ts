@@ -90,6 +90,14 @@ async function main() {
         description: 'Main frontend application resource for global role assignments',
       },
     });
+
+    // Create ResourceStatus ACTIVE for WINDBOOKS_APP
+    await (prisma as any).resourceStatus.create({
+      data: {
+        resourceId: frontEndAppResource.id,
+        status: 'ACTIVE',
+      },
+    });
   }
 
   // Create users for each role

@@ -12,6 +12,8 @@ describe('Resources Endpoints', () => {
   let resource1Id: string;
   let resource2Id: string;
   let resource3Id: string;
+  let windbooksAppResourceId: string;
+  let superAdminRoleId: string;
 
   const testEmail = 'testuser-resources@example.com';
   const testPassword = 'testpassword123';
@@ -26,6 +28,33 @@ describe('Resources Endpoints', () => {
     await (prisma as any).role.deleteMany({});
     await (prisma as any).resource.deleteMany({});
 
+    // Create WINDBOOKS_APP resource first
+    const windbooksAppResource = await (prisma as any).resource.create({
+      data: {
+        name: 'WINDBOOKS_APP',
+        description: 'Main Windbooks application resource',
+      },
+    });
+    windbooksAppResourceId = windbooksAppResource.id;
+
+    // Create ResourceStatus ACTIVE for WINDBOOKS_APP
+    await (prisma as any).resourceStatus.create({
+      data: {
+        resourceId: windbooksAppResourceId,
+        status: 'ACTIVE',
+      },
+    });
+
+    // Create SUPERADMIN role
+    const superAdminRole = await (prisma as any).role.create({
+      data: {
+        name: 'SUPERADMIN',
+        description: 'Super admin role with full access',
+        permissions: ['*'], // All permissions
+      },
+    });
+    superAdminRoleId = superAdminRole.id;
+
     // Create test resources
     const resource1 = await (prisma as any).resource.create({
       data: {
@@ -35,6 +64,14 @@ describe('Resources Endpoints', () => {
     });
     resource1Id = resource1.id;
 
+    // Create ResourceStatus ACTIVE for Resource 1
+    await (prisma as any).resourceStatus.create({
+      data: {
+        resourceId: resource1Id,
+        status: 'ACTIVE',
+      },
+    });
+
     const resource2 = await (prisma as any).resource.create({
       data: {
         name: 'Resource 2',
@@ -43,6 +80,14 @@ describe('Resources Endpoints', () => {
     });
     resource2Id = resource2.id;
 
+    // Create ResourceStatus ACTIVE for Resource 2
+    await (prisma as any).resourceStatus.create({
+      data: {
+        resourceId: resource2Id,
+        status: 'ACTIVE',
+      },
+    });
+
     const resource3 = await (prisma as any).resource.create({
       data: {
         name: 'Resource 3',
@@ -50,6 +95,14 @@ describe('Resources Endpoints', () => {
       },
     });
     resource3Id = resource3.id;
+
+    // Create ResourceStatus ACTIVE for Resource 3
+    await (prisma as any).resourceStatus.create({
+      data: {
+        resourceId: resource3Id,
+        status: 'ACTIVE',
+      },
+    });
 
     // Create regular test user
     const hashedPassword = await hashPassword(testPassword);
@@ -82,6 +135,16 @@ describe('Resources Endpoints', () => {
       },
     });
     adminUserId = adminUser.id;
+
+    // Assign SUPERADMIN role to admin user for WINDBOOKS_APP resource
+    await (prisma as any).userResourceRole.create({
+      data: {
+        userId: adminUserId,
+        roleId: superAdminRoleId,
+        resourceId: windbooksAppResourceId,
+      },
+    });
+
     adminUserToken = generateAccessToken({
       userId: adminUserId,
       isSuperAdmin: true,
@@ -137,6 +200,7 @@ describe('Resources Endpoints', () => {
     // Clean up test data
     await (prisma as any).userResourceRole.deleteMany({});
     await (prisma as any).refreshToken.deleteMany({});
+    await (prisma as any).resourceStatus.deleteMany({});
     await (prisma as any).user.deleteMany({});
     await (prisma as any).role.deleteMany({});
     await (prisma as any).resource.deleteMany({});
@@ -169,13 +233,14 @@ describe('Resources Endpoints', () => {
       expect(response.status).toBe(200);
       expect(Array.isArray(response.body)).toBe(true);
 
-      // Admin should see all 3 resources
-      expect(response.body.length).toBe(3);
+      // Admin should see all resources (including WINDBOOKS_APP)
+      expect(response.body.length).toBe(4);
 
       const resourceIds = response.body.map((r: any) => r.id);
       expect(resourceIds).toContain(resource1Id);
       expect(resourceIds).toContain(resource2Id);
       expect(resourceIds).toContain(resource3Id);
+      expect(resourceIds).toContain(windbooksAppResourceId);
     });
 
     it('should return empty array for user with no resource access', async () => {
@@ -439,7 +504,7 @@ describe('Resources Endpoints', () => {
       expect(resourceIds).toContain(resource2Id);
     });
 
-    it('should return all resources for super admin user', async () => {
+    it('should return all resources for user with SUPERADMIN role on WINDBOOKS_APP resource', async () => {
       const response = await request(app)
         .get('/api/resources/v2')
         .set('Authorization', `Bearer ${adminUserToken}`);
@@ -448,12 +513,70 @@ describe('Resources Endpoints', () => {
       expect(response.body).toHaveProperty('data');
       expect(response.body).toHaveProperty('pagination');
       expect(Array.isArray(response.body.data)).toBe(true);
-      expect(response.body.data.length).toBe(3); // Admin sees all resources
+      expect(response.body.data.length).toBe(4); // Admin sees all resources (including WINDBOOKS_APP)
 
-      const resourceIds = response.body.data.map((r: any) => r.id);
-      expect(resourceIds).toContain(resource1Id);
-      expect(resourceIds).toContain(resource2Id);
-      expect(resourceIds).toContain(resource3Id);
+      const resourceNames = response.body.data.map((r: any) => r.name);
+      expect(resourceNames).toContain('WINDBOOKS_APP');
+      expect(resourceNames).toContain('Resource 1');
+      expect(resourceNames).toContain('Resource 2');
+      expect(resourceNames).toContain('Resource 3');
+    });
+
+    it('should return only assigned resources for user with isSuperAdmin=true but no SUPERADMIN role on WINDBOOKS_APP', async () => {
+      // Create a user with isSuperAdmin=true but no SUPERADMIN role on WINDBOOKS_APP
+      const superAdminNoRoleEmail = 'superadmin-no-role@example.com';
+      const superAdminNoRolePassword = 'password123';
+      const hashedPassword = await hashPassword(superAdminNoRolePassword);
+
+      const superAdminNoRoleUser = await (prisma as any).user.create({
+        data: {
+          email: superAdminNoRoleEmail,
+          isActive: true,
+          isSuperAdmin: true, // This user has isSuperAdmin=true
+          credential: {
+            create: {
+              passwordHash: hashedPassword,
+            },
+          },
+        },
+      });
+
+      // Assign this user to Resource 1 only (not WINDBOOKS_APP)
+      const resource1Role = await (prisma as any).role.create({
+        data: {
+          name: 'Resource 1 Role for Super Admin Test',
+          description: 'Role for testing super admin without WINDBOOKS_APP SUPERADMIN role',
+          permissions: ['resource:read'],
+        },
+      });
+
+      await (prisma as any).userResourceRole.create({
+        data: {
+          userId: superAdminNoRoleUser.id,
+          roleId: resource1Role.id,
+          resourceId: resource1Id,
+        },
+      });
+
+      const superAdminNoRoleToken = generateAccessToken({
+        userId: superAdminNoRoleUser.id,
+        isSuperAdmin: true,
+        permissions: ['resource:read'],
+        role: 'Super Admin'
+      });
+
+      const response = await request(app)
+        .get('/api/resources/v2')
+        .set('Authorization', `Bearer ${superAdminNoRoleToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.length).toBe(1); // Should only see Resource 1, not all resources
+      expect(response.body.data[0].id).toBe(resource1Id);
+      expect(response.body.data[0].name).toBe('Resource 1');
+
+      // Clean up
+      await (prisma as any).user.delete({ where: { id: superAdminNoRoleUser.id } });
+      await (prisma as any).role.delete({ where: { id: resource1Role.id } });
     });
 
     it('should filter resources by name (case-insensitive partial match)', async () => {
@@ -981,20 +1104,21 @@ describe('Resources Endpoints', () => {
     });
 
     it('should create ACTIVE status record when resource is first accessed', async () => {
-      // First, check that no ResourceStatus exists for resource3
+      // First, check that ACTIVE ResourceStatus exists for resource3 (created during setup)
       const initialStatus = await (prisma as any).resourceStatus.findUnique({
         where: { resourceId: resource3Id },
       });
-      expect(initialStatus).toBeNull();
+      expect(initialStatus).toBeTruthy();
+      expect(initialStatus.status).toBe('ACTIVE');
 
-      // Soft delete the resource (this should create an ACTIVE status first, then update to DELETED)
+      // Soft delete the resource (this should update the ACTIVE status to DELETED)
       const response = await request(app)
         .delete(`/api/resources/${resource3Id}`)
         .set('Authorization', `Bearer ${adminUserToken}`);
 
       expect(response.status).toBe(204);
 
-      // Verify DELETED status was created
+      // Verify ACTIVE status was updated to DELETED
       const resourceStatus = await (prisma as any).resourceStatus.findUnique({
         where: { resourceId: resource3Id },
       });

@@ -26,6 +26,31 @@ describe('V2 Endpoints', () => {
     await (prisma as any).role.deleteMany({});
     await (prisma as any).resource.deleteMany({});
 
+    // Create WINDBOOKS_APP resource first
+    const windbooksAppResource = await (prisma as any).resource.create({
+      data: {
+        name: 'WINDBOOKS_APP',
+        description: 'Main Windbooks application resource',
+      },
+    });
+
+    // Create ResourceStatus ACTIVE for WINDBOOKS_APP
+    await (prisma as any).resourceStatus.create({
+      data: {
+        resourceId: windbooksAppResource.id,
+        status: 'ACTIVE',
+      },
+    });
+
+    // Create SUPERADMIN role
+    const superAdminRole = await (prisma as any).role.create({
+      data: {
+        name: 'SUPERADMIN',
+        description: 'Super admin role with full access',
+        permissions: ['*'], // All permissions
+      },
+    });
+
     // Create test resources
     const resource1 = await (prisma as any).resource.create({
       data: {
@@ -35,6 +60,14 @@ describe('V2 Endpoints', () => {
     });
     resource1Id = resource1.id;
 
+    // Create ResourceStatus ACTIVE for Resource 1
+    await (prisma as any).resourceStatus.create({
+      data: {
+        resourceId: resource1Id,
+        status: 'ACTIVE',
+      },
+    });
+
     const resource2 = await (prisma as any).resource.create({
       data: {
         name: 'Resource 2',
@@ -43,6 +76,14 @@ describe('V2 Endpoints', () => {
     });
     resource2Id = resource2.id;
 
+    // Create ResourceStatus ACTIVE for Resource 2
+    await (prisma as any).resourceStatus.create({
+      data: {
+        resourceId: resource2Id,
+        status: 'ACTIVE',
+      },
+    });
+
     const resource3 = await (prisma as any).resource.create({
       data: {
         name: 'Resource 3',
@@ -50,6 +91,14 @@ describe('V2 Endpoints', () => {
       },
     });
     resource3Id = resource3.id;
+
+    // Create ResourceStatus ACTIVE for Resource 3
+    await (prisma as any).resourceStatus.create({
+      data: {
+        resourceId: resource3Id,
+        status: 'ACTIVE',
+      },
+    });
 
     // Create regular test user
     const hashedPassword = await hashPassword(testPassword);
@@ -82,6 +131,16 @@ describe('V2 Endpoints', () => {
       },
     });
     adminUserId = adminUser.id;
+
+    // Assign SUPERADMIN role to admin user for WINDBOOKS_APP resource
+    await (prisma as any).userResourceRole.create({
+      data: {
+        userId: adminUserId,
+        roleId: superAdminRole.id,
+        resourceId: windbooksAppResource.id,
+      },
+    });
+
     adminUserToken = generateAccessToken({
       userId: adminUserId,
       isSuperAdmin: true,
@@ -137,6 +196,7 @@ describe('V2 Endpoints', () => {
     // Clean up test data
     await (prisma as any).userResourceRole.deleteMany({});
     await (prisma as any).refreshToken.deleteMany({});
+    await (prisma as any).resourceStatus.deleteMany({});
     await (prisma as any).user.deleteMany({});
     await (prisma as any).role.deleteMany({});
     await (prisma as any).resource.deleteMany({});
@@ -300,8 +360,8 @@ describe('V2 Endpoints', () => {
         .set('Authorization', `Bearer ${adminUserToken}`);
 
       expect(response.status).toBe(200);
-      expect(response.body.data.length).toBe(3); // admin sees all resources
-      expect(response.body.pagination.total).toBe(3);
+      expect(response.body.data.length).toBe(4); // admin sees all resources including WINDBOOKS_APP
+      expect(response.body.pagination.total).toBe(4);
     });
 
     it('should support custom pagination parameters', async () => {

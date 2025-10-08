@@ -22,8 +22,37 @@ describe('RBAC Service', () => {
     let resource1Id: string;
     let resource2Id: string;
     let resource3Id: string;
+    let windbooksAppResourceId: string;
+    let superAdminRoleId: string;
 
     beforeEach(async () => {
+      // Create WINDBOOKS_APP resource first
+      const windbooksAppResource = await (prisma as any).resource.create({
+        data: {
+          name: 'WINDBOOKS_APP',
+          description: 'Main Windbooks application resource',
+        },
+      });
+      windbooksAppResourceId = windbooksAppResource.id;
+
+      // Create ResourceStatus ACTIVE for WINDBOOKS_APP
+      await (prisma as any).resourceStatus.create({
+        data: {
+          resourceId: windbooksAppResourceId,
+          status: 'ACTIVE',
+        },
+      });
+
+      // Create SUPERADMIN role
+      const superAdminRole = await (prisma as any).role.create({
+        data: {
+          name: 'SUPERADMIN',
+          description: 'Super admin role with full access',
+          permissions: ['*'], // All permissions
+        },
+      });
+      superAdminRoleId = superAdminRole.id;
+
       // Create test users
       const testUser = await (prisma as any).user.create({
         data: { email: 'test@example.com', isActive: true, isSuperAdmin: false },
@@ -35,21 +64,54 @@ describe('RBAC Service', () => {
       });
       adminUserId = adminUser.id;
 
+      // Assign SUPERADMIN role to admin user for WINDBOOKS_APP resource
+      await (prisma as any).userResourceRole.create({
+        data: {
+          userId: adminUserId,
+          roleId: superAdminRoleId,
+          resourceId: windbooksAppResourceId,
+        },
+      });
+
       // Create resources
       const resource1 = await (prisma as any).resource.create({
         data: { name: 'Resource 1', description: 'First resource' },
       });
       resource1Id = resource1.id;
 
+      // Create ResourceStatus ACTIVE for resource1
+      await (prisma as any).resourceStatus.create({
+        data: {
+          resourceId: resource1Id,
+          status: 'ACTIVE',
+        },
+      });
+
       const resource2 = await (prisma as any).resource.create({
         data: { name: 'Resource 2', description: 'Second resource' },
       });
       resource2Id = resource2.id;
 
+      // Create ResourceStatus ACTIVE for resource2
+      await (prisma as any).resourceStatus.create({
+        data: {
+          resourceId: resource2Id,
+          status: 'ACTIVE',
+        },
+      });
+
       const resource3 = await (prisma as any).resource.create({
         data: { name: 'Resource 3', description: 'Third resource' },
       });
       resource3Id = resource3.id;
+
+      // Create ResourceStatus ACTIVE for resource3
+      await (prisma as any).resourceStatus.create({
+        data: {
+          resourceId: resource3Id,
+          status: 'ACTIVE',
+        },
+      });
 
       // Create roles
       const role1 = await (prisma as any).role.create({
@@ -92,11 +154,11 @@ describe('RBAC Service', () => {
     it('should return all resources for super admin user', async () => {
       const result = await rbacService.getUserAccessibleResourcesPaginated(adminUserId);
 
-      expect(result.data).toHaveLength(3);
+      expect(result.data).toHaveLength(4);
       expect(result.pagination).toEqual({
         page: 1,
         limit: 10,
-        total: 3,
+        total: 4,
         totalPages: 1,
         hasNext: false,
         hasPrev: false,
@@ -106,6 +168,7 @@ describe('RBAC Service', () => {
       expect(resourceIds).toContain(resource1Id);
       expect(resourceIds).toContain(resource2Id);
       expect(resourceIds).toContain(resource3Id);
+      expect(resourceIds).toContain(windbooksAppResourceId);
     });
 
     it('should return paginated results with custom page and limit', async () => {
@@ -117,15 +180,34 @@ describe('RBAC Service', () => {
         })),
       });
 
+      // Get the created resources
+      const extraResources = await (prisma as any).resource.findMany({
+        where: {
+          name: {
+            startsWith: 'Extra Resource',
+          },
+        },
+      });
+
+      // Create ResourceStatus ACTIVE for each extra resource
+      for (const resource of extraResources) {
+        await (prisma as any).resourceStatus.create({
+          data: {
+            resourceId: resource.id,
+            status: 'ACTIVE',
+          },
+        });
+      }
+
       const result = await rbacService.getUserAccessibleResourcesPaginated(adminUserId, 2, 4);
 
       expect(result.data).toHaveLength(4);
       expect(result.pagination).toEqual({
         page: 2,
         limit: 4,
-        total: 8, // 3 original + 5 new
-        totalPages: 2,
-        hasNext: false,
+        total: 9, // 4 original + 5 new
+        totalPages: 3,
+        hasNext: true,
         hasPrev: true,
       });
     });

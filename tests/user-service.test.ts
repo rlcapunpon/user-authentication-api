@@ -178,10 +178,26 @@ describe('User Service', () => {
         },
       });
 
+      // Create ResourceStatus ACTIVE for Test Resource
+      await (prisma as any).resourceStatus.create({
+        data: {
+          resourceId: testResource.id,
+          status: 'ACTIVE',
+        },
+      });
+
       windbooksAppResource = await (prisma as any).resource.create({
         data: {
           name: 'WINDBOOKS_APP',
           description: 'Main frontend application resource',
+        },
+      });
+
+      // Create ResourceStatus ACTIVE for WINDBOOKS_APP
+      await (prisma as any).resourceStatus.create({
+        data: {
+          resourceId: windbooksAppResource.id,
+          status: 'ACTIVE',
         },
       });
     });

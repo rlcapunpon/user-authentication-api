@@ -78,6 +78,14 @@ describe('Extended Permissions Tests', () => {
     });
     testResourceId = testResource.id;
 
+    // Create ResourceStatus ACTIVE for Test Resource Extended
+    await (prisma as any).resourceStatus.create({
+      data: {
+        resourceId: testResourceId,
+        status: 'ACTIVE',
+      },
+    });
+
     const globalResource = await (prisma as any).resource.create({
       data: {
         name: 'Global Test Resource',
@@ -85,12 +93,21 @@ describe('Extended Permissions Tests', () => {
       },
     });
     globalResourceId = globalResource.id;
+
+    // Create ResourceStatus ACTIVE for Global Test Resource
+    await (prisma as any).resourceStatus.create({
+      data: {
+        resourceId: globalResourceId,
+        status: 'ACTIVE',
+      },
+    });
   });
 
   afterAll(async () => {
     // Clean up test data
     await (prisma as any).userResourceRole.deleteMany({});
     await (prisma as any).refreshToken.deleteMany({});
+    await (prisma as any).resourceStatus.deleteMany({});
     await (prisma as any).user.deleteMany({});
     await (prisma as any).role.deleteMany({});
     await (prisma as any).resource.deleteMany({});

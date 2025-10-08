@@ -14,9 +14,11 @@ describe('Authentication Endpoints', () => {
     // Clear test data and create a test user
     await (prisma as any).userResourceRole.deleteMany({});
     await (prisma as any).refreshToken.deleteMany({});
+    await (prisma as any).userVerification.deleteMany({});
     await (prisma as any).user.deleteMany({});
     await (prisma as any).role.deleteMany({});
     await (prisma as any).resource.deleteMany({});
+    await (prisma as any).resourceStatus.deleteMany({});
     
     // Create required roles and resources for tests
     const superAdminRole = await (prisma as any).role.create({
@@ -33,6 +35,14 @@ describe('Authentication Endpoints', () => {
         description: 'Main frontend application resource for global role assignments',
       },
     });
+
+    // Create ResourceStatus ACTIVE for the WINDBOOKS_APP resource
+    await (prisma as any).resourceStatus.create({
+      data: {
+        resourceId: windbooksAppResource.id,
+        status: 'ACTIVE',
+      },
+    });
     
     // Create test user
     const hashedPassword = await hashPassword(testPassword);
@@ -41,23 +51,39 @@ describe('Authentication Endpoints', () => {
         email: testEmail,
         isActive: true,
         isSuperAdmin: false,
-        credential: {
-          create: {
-            passwordHash: hashedPassword,
-          },
-        },
       },
     });
     testUserId = testUser.id;
+
+    // Create Credential record separately
+    await (prisma as any).credential.create({
+      data: {
+        userId: testUserId,
+        passwordHash: hashedPassword,
+      },
+    });
+
+    // Create UserVerification record separately
+    await (prisma as any).userVerification.create({
+      data: {
+        userId: testUserId,
+        isEmailVerified: true,
+        verificationStatus: 'verified',
+        userStatus: 'active',
+      },
+    });
   });
 
   afterAll(async () => {
     // Clean up test data
     await (prisma as any).refreshToken.deleteMany({});
     await (prisma as any).userResourceRole.deleteMany({});
+    await (prisma as any).userVerification.deleteMany({});
+    await (prisma as any).credential.deleteMany({});
     await (prisma as any).user.deleteMany({});
     await (prisma as any).role.deleteMany({});
     await (prisma as any).resource.deleteMany({});
+    await (prisma as any).resourceStatus.deleteMany({});
     await prisma.$disconnect();
   });
 
@@ -186,13 +212,16 @@ describe('Authentication Endpoints', () => {
               passwordHash: hashedPassword,
             },
           },
-          verification: {
-            create: {
-              isEmailVerified: true, // User is verified but deactivated
-              verificationStatus: 'verified',
-              userStatus: 'active',
-            },
-          },
+        },
+      });
+
+      // Create UserVerification record for deactivated user
+      await (prisma as any).userVerification.create({
+        data: {
+          userId: deactivatedUser.id,
+          isEmailVerified: true, // User is verified but deactivated
+          verificationStatus: 'verified',
+          userStatus: 'active',
         },
       });
 
@@ -505,6 +534,16 @@ describe('Authentication Endpoints', () => {
               passwordHash: hashedPassword,
             },
           },
+        },
+      });
+
+      // Create UserVerification record for super admin user
+      await (prisma as any).userVerification.create({
+        data: {
+          userId: superAdminUser.id,
+          isEmailVerified: true,
+          verificationStatus: 'verified',
+          userStatus: 'active',
         },
       });
 
@@ -975,6 +1014,16 @@ describe('Authentication Endpoints', () => {
         },
       });
       existingUserId = existingUser.id;
+
+      // Create UserVerification record for existing user
+      await (prisma as any).userVerification.create({
+        data: {
+          userId: existingUserId,
+          isEmailVerified: true,
+          verificationStatus: 'verified',
+          userStatus: 'active',
+        },
+      });
     });
 
     afterAll(async () => {

@@ -34,6 +34,14 @@ describe('Roles Endpoints', () => {
     });
     testResourceId = testResource.id;
 
+    // Create ResourceStatus ACTIVE for Test Resource
+    await (prisma as any).resourceStatus.create({
+      data: {
+        resourceId: testResourceId,
+        status: 'ACTIVE',
+      },
+    });
+
     // Create regular test user
     const hashedPassword = await hashPassword(testPassword);
     const testUser = await (prisma as any).user.create({
@@ -130,6 +138,7 @@ describe('Roles Endpoints', () => {
     // Clean up test data
     await (prisma as any).userResourceRole.deleteMany({});
     await (prisma as any).refreshToken.deleteMany({});
+    await (prisma as any).resourceStatus.deleteMany({});
     await (prisma as any).user.deleteMany({});
     await (prisma as any).role.deleteMany({});
     await (prisma as any).resource.deleteMany({});
