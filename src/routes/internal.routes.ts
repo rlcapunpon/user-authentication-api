@@ -1,6 +1,7 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { apiKeyAuth } from '../middleware/apiKey.middleware';
 import { validate } from '../middleware/validate';
+import { logger } from '../utils/logger';
 import {
   createResource,
   getUserResourcesAndRoles,
@@ -21,36 +22,138 @@ import {
 
 const router = Router();
 
-// Apply API key authentication to all internal routes
+// Logging middleware for internal API requests
+const internalApiLogger = (req: Request, res: Response, next: NextFunction) => {
+  const startTime = Date.now();
+  const apiKey = req.headers['x-api-key'] as string;
+  const apiKeyPrefix = apiKey ? apiKey.substring(0, 10) + '...' : 'MISSING';
+
+  logger.info({
+    message: '[INTERNAL API REQUEST]',
+    method: req.method,
+    path: req.path,
+    originalUrl: req.originalUrl,
+    apiKeyPrefix,
+    userAgent: req.get('User-Agent'),
+    ip: req.ip,
+    contentLength: req.get('content-length'),
+    query: req.query,
+    params: req.params,
+    timestamp: new Date().toISOString()
+  });
+
+  // Log response
+  const originalSend = res.send;
+  res.send = function(data) {
+    const duration = Date.now() - startTime;
+
+    logger.info({
+      message: '[INTERNAL API RESPONSE]',
+      method: req.method,
+      path: req.path,
+      statusCode: res.statusCode,
+      duration: `${duration}ms`,
+      responseSize: Buffer.isBuffer(data) ? data.length : (typeof data === 'string' ? data.length : JSON.stringify(data).length),
+      timestamp: new Date().toISOString()
+    });
+
+    return originalSend.call(this, data);
+  };
+
+  next();
+};
+
+// Apply API key authentication and logging to all internal routes
 router.use(apiKeyAuth);
+router.use(internalApiLogger);
 
 // Internal API controller functions
 const getInternalResources = async (req: Request, res: Response) => {
   try {
+    logger.debug({
+      message: 'Fetching all resources for internal API',
+      ip: req.ip,
+      timestamp: new Date().toISOString()
+    });
+
     const resources = await getAllResources();
+
+    logger.info({
+      message: 'Successfully retrieved resources for internal API',
+      resourceCount: resources.length,
+      ip: req.ip,
+      timestamp: new Date().toISOString()
+    });
+
     res.json(resources);
   } catch (error) {
-    console.error('Error fetching resources for internal API:', error);
+    logger.error({
+      message: 'Error fetching resources for internal API',
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      ip: req.ip,
+      timestamp: new Date().toISOString()
+    });
     res.status(500).json({ message: 'Failed to fetch resources' });
   }
 };
 
 const getInternalRoles = async (req: Request, res: Response) => {
   try {
+    logger.debug({
+      message: 'Fetching all roles for internal API',
+      ip: req.ip,
+      timestamp: new Date().toISOString()
+    });
+
     const roles = await getAllRoles();
+
+    logger.info({
+      message: 'Successfully retrieved roles for internal API',
+      roleCount: roles.length,
+      ip: req.ip,
+      timestamp: new Date().toISOString()
+    });
+
     res.json(roles);
   } catch (error) {
-    console.error('Error fetching roles for internal API:', error);
+    logger.error({
+      message: 'Error fetching roles for internal API',
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      ip: req.ip,
+      timestamp: new Date().toISOString()
+    });
     res.status(500).json({ message: 'Failed to fetch roles' });
   }
 };
 
 const getInternalAvailableRoles = async (req: Request, res: Response) => {
   try {
+    logger.debug({
+      message: 'Fetching available roles for internal API',
+      ip: req.ip,
+      timestamp: new Date().toISOString()
+    });
+
     const roles = await getAvailableRoles();
+
+    logger.info({
+      message: 'Successfully retrieved available roles for internal API',
+      roleCount: roles.length,
+      ip: req.ip,
+      timestamp: new Date().toISOString()
+    });
+
     res.json(roles);
   } catch (error) {
-    console.error('Error fetching available roles for internal API:', error);
+    logger.error({
+      message: 'Error fetching available roles for internal API',
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      ip: req.ip,
+      timestamp: new Date().toISOString()
+    });
     res.status(500).json({ message: 'Failed to fetch available roles' });
   }
 };
@@ -276,8 +379,6 @@ router.post('/resources/assign-role', validate(assignUserResourceRoleSchema), as
  */
 router.post('/resources/revoke-role', validate(revokeUserResourceRoleSchema), revokeUserResourceRole);
 
-router.post('/resources/revoke-role', validate(revokeUserResourceRoleSchema), revokeUserResourceRole);
-
 /**
  * Get user permissions for a specific resource (Internal API version)
  */
@@ -285,17 +386,38 @@ const getInternalUserPermissionsForResource = async (req: Request, res: Response
   try {
     const { userId, resourceId, resourceName } = req.query;
 
+    logger.debug({
+      message: 'Getting user permissions for resource (internal API)',
+      userId,
+      resourceId,
+      resourceName,
+      ip: req.ip,
+      timestamp: new Date().toISOString()
+    });
+
     // Validate that userId is provided
     if (!userId) {
-      return res.status(400).json({ 
-        message: 'userId query parameter is required' 
+      logger.warn({
+        message: 'Missing userId parameter in internal permission request',
+        query: req.query,
+        ip: req.ip,
+        timestamp: new Date().toISOString()
+      });
+      return res.status(400).json({
+        message: 'userId query parameter is required'
       });
     }
 
     // Validate that either resourceId or resourceName is provided
     if (!resourceId && !resourceName) {
-      return res.status(400).json({ 
-        message: 'Either resourceId or resourceName must be provided' 
+      logger.warn({
+        message: 'Missing resource identifier in internal permission request',
+        query: req.query,
+        ip: req.ip,
+        timestamp: new Date().toISOString()
+      });
+      return res.status(400).json({
+        message: 'Either resourceId or resourceName must be provided'
       });
     }
 
@@ -308,8 +430,16 @@ const getInternalUserPermissionsForResource = async (req: Request, res: Response
     }
 
     if (!resource) {
-      return res.status(404).json({ 
-        message: 'Resource not found' 
+      logger.warn({
+        message: 'Resource not found in internal permission request',
+        userId,
+        resourceId,
+        resourceName,
+        ip: req.ip,
+        timestamp: new Date().toISOString()
+      });
+      return res.status(404).json({
+        message: 'Resource not found'
       });
     }
 
@@ -318,6 +448,17 @@ const getInternalUserPermissionsForResource = async (req: Request, res: Response
     if (user?.isSuperAdmin) {
       // Super admin has full access to all resources
       const { ROLE_PERMISSIONS } = await import('../config/permissions');
+
+      logger.info({
+        message: 'Super admin permissions retrieved for internal API',
+        userId,
+        resourceId: resource.id,
+        resourceName: resource.name,
+        permissionCount: ROLE_PERMISSIONS.SUPERADMIN.length,
+        ip: req.ip,
+        timestamp: new Date().toISOString()
+      });
+
       return res.json({
         resourceId: resource.id,
         roleId: 'super-admin-role', // Special ID for super admin
@@ -330,6 +471,14 @@ const getInternalUserPermissionsForResource = async (req: Request, res: Response
     const userResourceRole = await getUserRoleForResource(userId as string, resource.id);
 
     if (!userResourceRole) {
+      logger.warn({
+        message: 'No role found for user on resource in internal permission request',
+        userId,
+        resourceId: resource.id,
+        resourceName: resource.name,
+        ip: req.ip,
+        timestamp: new Date().toISOString()
+      });
       return res.status(404).json({
         message: 'No role found for this user on the specified resource'
       });
@@ -337,6 +486,18 @@ const getInternalUserPermissionsForResource = async (req: Request, res: Response
 
     // Get permissions for the role
     const rolePermissions = await getRolePermissions(userResourceRole.roleId);
+
+    logger.info({
+      message: 'User permissions retrieved successfully for internal API',
+      userId,
+      resourceId: resource.id,
+      resourceName: resource.name,
+      roleId: userResourceRole.roleId,
+      roleName: userResourceRole.role.name,
+      permissionCount: rolePermissions.length,
+      ip: req.ip,
+      timestamp: new Date().toISOString()
+    });
 
     res.json({
       resourceId: resource.id,
@@ -346,7 +507,14 @@ const getInternalUserPermissionsForResource = async (req: Request, res: Response
     });
 
   } catch (error) {
-    console.error('Error getting user permissions for resource (internal):', error);
+    logger.error({
+      message: 'Error getting user permissions for resource (internal API)',
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      query: req.query,
+      ip: req.ip,
+      timestamp: new Date().toISOString()
+    });
     res.status(500).json({ message: 'Failed to get user permissions for resource' });
   }
 };
