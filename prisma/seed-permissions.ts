@@ -4,11 +4,11 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { 
-  ROLE_PERMISSIONS, 
-  PERMISSIONS, 
-  getAllPermissions, 
-  getRolePermissions 
+import {
+  ROLE_PERMISSIONS,
+  PERMISSIONS,
+  getAllPermissions,
+  getRolePermissions
 } from '../src/config/permissions';
 
 const prisma = new PrismaClient();

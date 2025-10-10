@@ -4,6 +4,10 @@
 
 # Env
 .env
+.env.prod
+.env.tst
+.env.dev
+.env.local
 
 # Logs
 logs
@@ -21,6 +25,7 @@ lerna-debug.log*
 *.njsproj
 *.sln
 *.sw?
+*.js
 
 #context
 /code_references

@@ -34,6 +34,9 @@ info:
 servers:
   - url: http://localhost:3000/api
     description: Development server
+  - url: http://localhost:3000/api
+    description: TST server
+
 
 tags:
   - name: Auth
