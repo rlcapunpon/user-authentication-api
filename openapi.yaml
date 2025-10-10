@@ -1985,6 +1985,141 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /internal/resources/{id}:
+    delete:
+      summary: Soft delete a resource (Internal API)
+      description: Mark a resource as deleted (soft delete). The resource will no longer appear in GET requests but remains in the database for audit purposes.
+      tags: [Internal Resources]
+      security:
+        - apiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: The unique identifier of the resource to delete
+      responses:
+        '204':
+          description: Resource successfully marked as deleted (status set to DELETED)
+        '400':
+          description: Bad request - resource is already deleted
+        '401':
+          description: Invalid API key
+        '404':
+          description: Resource not found
+        '500':
+          description: Internal server error
+
+  /internal/resources/user-roles:
+    post:
+      summary: Get resource roles for authenticated user given a list of resourceIds (Internal API)
+      description: Retrieve the roles assigned to the currently authenticated user for a list of specified resources
+      tags: [Internal Resources]
+      security:
+        - apiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GetResourceRolesRequest'
+            example:
+              resources: ["resource1", "resource2"]
+      responses:
+        '200':
+          description: Resource roles retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetResourceRolesResponse'
+              example:
+                resourceRoles:
+                  - resourceId: "resource1"
+                    roleName: "STAFF"
+                    roleId: "role123"
+                  - resourceId: "resource2"
+                    roleName: "ADMIN"
+                    roleId: "role456"
+        '400':
+          description: Bad request - invalid request body
+        '401':
+          description: Invalid API key
+        '500':
+          description: Internal server error
+
+  /internal/resources/v2:
+    get:
+      summary: Get resources accessible to the authenticated user (paginated) (Internal API)
+      tags: [Internal Resources]
+      security:
+        - apiKeyAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Page number
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+          description: Number of items per page
+        - in: query
+          name: userId
+          required: true
+          schema:
+            type: string
+          description: User ID to get resources for
+      responses:
+        '200':
+          description: List of accessible resources retrieved successfully (paginated)
+        '401':
+          description: Invalid API key
+        '403':
+          description: Forbidden
+        '500':
+          description: Internal server error
+
+  /internal/resources/{userId}:
+    get:
+      summary: Get all resources and roles assigned to a specific user (Internal API)
+      description: Retrieve all resources and their corresponding roles assigned to a user. Super admins can access any user's data, while regular users can only access their own data.
+      tags: [Internal Resources]
+      security:
+        - apiKeyAuth: []
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The unique identifier of the user
+      responses:
+        '200':
+          description: User resources and roles retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  resources:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UserResourceRoleAssignment'
+        '401':
+          description: Invalid API key
+        '404':
+          description: User not found
+        '500':
+          description: Internal server error
+
 components:
   securitySchemes:
     bearerAuth:

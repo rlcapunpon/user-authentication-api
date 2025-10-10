@@ -2,10 +2,13 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { apiKeyAuth } from '../middleware/apiKey.middleware';
 import { validate } from '../middleware/validate';
 import { logger } from '../utils/logger';
+import * as rbacService from '../services/rbac.service';
 import {
   createResource,
   getUserResourcesAndRoles,
-  getResourceRoles
+  getResourceRoles,
+  deleteResource,
+  getResourcesV2
 } from '../controllers/rbac.controller';
 import { assignUserResourceRole, revokeUserResourceRole } from '../controllers/user.controller';
 import { getMe, getUserById } from '../controllers/auth.controller';
@@ -53,7 +56,7 @@ const internalApiLogger = (req: Request, res: Response, next: NextFunction) => {
       path: req.path,
       statusCode: res.statusCode,
       duration: `${duration}ms`,
-      responseSize: Buffer.isBuffer(data) ? data.length : (typeof data === 'string' ? data.length : JSON.stringify(data).length),
+      responseSize: Buffer.isBuffer(data) ? data.length : (typeof data === 'string' ? data.length : (data ? JSON.stringify(data).length : 0)),
       timestamp: new Date().toISOString()
     });
 
@@ -159,6 +162,114 @@ const getInternalAvailableRoles = async (req: Request, res: Response) => {
 };
 
 /**
+ * Get resources v2 for internal API - requires userId in query params
+ */
+const getInternalResourcesV2 = async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.query;
+
+    logger.debug({
+      message: 'Fetching resources v2 for internal API',
+      userId,
+      query: req.query,
+      ip: req.ip,
+      timestamp: new Date().toISOString()
+    });
+
+    if (!userId) {
+      logger.warn({
+        message: 'Missing userId parameter in internal resources v2 request',
+        query: req.query,
+        ip: req.ip,
+        timestamp: new Date().toISOString()
+      });
+      return res.status(400).json({
+        message: 'userId query parameter is required'
+      });
+    }
+
+    // Create a modified request object with user information
+    const user = await findUserById(userId as string);
+    const modifiedReq = Object.assign(req, {
+      user: { 
+        userId: userId as string,
+        isSuperAdmin: user?.isSuperAdmin || false
+      }
+    });
+
+    // Remove userId from query since it's now in req.user
+    const originalQuery = { ...req.query };
+    delete (modifiedReq.query as any).userId;
+
+    // Call the original getResourcesV2 function
+    await getResourcesV2(modifiedReq, res);
+
+  } catch (error) {
+    logger.error({
+      message: 'Error fetching resources v2 for internal API',
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      query: req.query,
+      ip: req.ip,
+      timestamp: new Date().toISOString()
+    });
+    res.status(500).json({ message: 'Failed to fetch resources' });
+  }
+};
+
+/**
+ * Get user resources and roles for internal API - allows access to any user's data
+ */
+const getInternalUserResourcesAndRoles = async (req: Request, res: Response) => {
+  try {
+    const { userId: requestedUserId } = req.params;
+
+    logger.debug({
+      message: 'Fetching user resources and roles for internal API',
+      requestedUserId,
+      ip: req.ip,
+      timestamp: new Date().toISOString()
+    });
+
+    // Check if the requested user exists
+    const user = await findUserById(requestedUserId);
+    if (!user) {
+      logger.warn({
+        message: 'User not found in internal user resources request',
+        requestedUserId,
+        ip: req.ip,
+        timestamp: new Date().toISOString()
+      });
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // For internal API, we allow access to any user's data (no authorization check)
+    const result = await rbacService.getUserResourcesAndRoles(requestedUserId);
+
+    logger.info({
+      message: 'Successfully retrieved user resources and roles for internal API',
+      requestedUserId,
+      resourceCount: result.resources?.length || 0,
+      ip: req.ip,
+      timestamp: new Date().toISOString()
+    });
+
+    res.json(result);
+
+  } catch (error) {
+    logger.error({
+      message: 'Error fetching user resources and roles for internal API',
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      params: req.params,
+      ip: req.ip,
+      timestamp: new Date().toISOString()
+    });
+    res.status(500).json({ message: 'Failed to get user resources and roles' });
+  }
+};
+
+/**
  * @swagger
  * /internal/resources:
  *   get:
@@ -203,6 +314,297 @@ const getInternalAvailableRoles = async (req: Request, res: Response) => {
  */
 router.get('/resources', getInternalResources);
 router.post('/resources', validate(createResourceSchema), createResource);
+
+/**
+ * Delete resource for internal API - no authentication required
+ */
+const deleteInternalResource = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    logger.debug({
+      message: 'Deleting resource for internal API',
+      resourceId: id,
+      ip: req.ip,
+      timestamp: new Date().toISOString()
+    });
+
+    await rbacService.softDeleteResource(id);
+
+    logger.info({
+      message: 'Resource successfully deleted for internal API',
+      resourceId: id,
+      ip: req.ip,
+      timestamp: new Date().toISOString()
+    });
+
+    res.status(204).send(); // No content response for successful deletion
+  } catch (error) {
+    logger.error({
+      message: 'Error deleting resource for internal API',
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      resourceId: req.params.id,
+      ip: req.ip,
+      timestamp: new Date().toISOString()
+    });
+
+    if (error instanceof Error) {
+      if (error.message === 'Resource not found') {
+        return res.status(404).json({ message: 'Resource not found' });
+      }
+      if (error.message === 'Resource is already deleted') {
+        return res.status(400).json({ message: 'Resource is already deleted' });
+      }
+    }
+
+    res.status(500).json({ message: 'Failed to delete resource' });
+  }
+};
+
+/**
+ * @swagger
+ * /internal/resources/{id}:
+ *   delete:
+ *     summary: Soft delete a resource (Internal API)
+ *     description: Mark a resource as deleted (soft delete). The resource will no longer appear in GET requests but remains in the database for audit purposes.
+ *     tags: [Internal Resources]
+ *     security:
+ *       - apiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The unique identifier of the resource to delete
+ *     responses:
+ *       '204':
+ *         description: Resource successfully marked as deleted (status set to DELETED)
+ *       '400':
+ *         description: Bad request - resource is already deleted
+ *       '401':
+ *         description: Invalid API key
+ *       '404':
+ *         description: Resource not found
+ *       '500':
+ *         description: Internal server error
+ */
+router.delete('/resources/:id', deleteInternalResource);
+
+/**
+ * Get resource roles for internal API - allows access to any user's data
+ */
+const getInternalResourceRoles = async (req: Request, res: Response) => {
+  try {
+    const { resources, userId } = req.body;
+
+    logger.debug({
+      message: 'Getting resource roles for internal API',
+      userId,
+      resourceCount: resources?.length || 0,
+      ip: req.ip,
+      timestamp: new Date().toISOString()
+    });
+
+    if (!userId) {
+      logger.warn({
+        message: 'Missing userId in internal resource roles request',
+        body: req.body,
+        ip: req.ip,
+        timestamp: new Date().toISOString()
+      });
+      return res.status(400).json({ message: 'userId is required' });
+    }
+
+    if (!resources || !Array.isArray(resources) || resources.length === 0) {
+      logger.warn({
+        message: 'Invalid resources array in internal resource roles request',
+        body: req.body,
+        ip: req.ip,
+        timestamp: new Date().toISOString()
+      });
+      return res.status(400).json({ message: 'Resources array is required and must not be empty' });
+    }
+
+    const result = await rbacService.getResourceRoles(userId, resources);
+
+    logger.info({
+      message: 'Resource roles retrieved successfully for internal API',
+      userId,
+      resourceCount: resources.length,
+      roleCount: result.resourceRoles?.length || 0,
+      ip: req.ip,
+      timestamp: new Date().toISOString()
+    });
+
+    res.json(result);
+  } catch (error) {
+    logger.error({
+      message: 'Error getting resource roles for internal API',
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      body: req.body,
+      ip: req.ip,
+      timestamp: new Date().toISOString()
+    });
+    res.status(500).json({ message: 'Failed to get resource roles' });
+  }
+};
+
+/**
+ * @swagger
+ * /internal/resources/user-roles:
+ *   post:
+ *     summary: Get resource roles for authenticated user given a list of resourceIds (Internal API)
+ *     description: Retrieve the roles assigned to the currently authenticated user for a list of specified resources
+ *     tags: [Internal Resources]
+ *     security:
+ *       - apiKeyAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - resources
+ *             properties:
+ *               resources:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 minItems: 1
+ *                 description: Array of resource IDs to get roles for
+ *                 example: ["resource1", "resource2"]
+ *     responses:
+ *       200:
+ *         description: Resource roles retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 resourceRoles:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       resourceId:
+ *                         type: string
+ *                         description: The resource ID
+ *                       roleName:
+ *                         type: string
+ *                         description: The role name
+ *                       roleId:
+ *                         type: string
+ *                         description: The role ID
+ *                   example:
+ *                     - resourceId: "resource1"
+ *                       roleName: "STAFF"
+ *                       roleId: "role123"
+ *                     - resourceId: "resource2"
+ *                       roleName: "ADMIN"
+ *                       roleId: "role456"
+ *       400:
+ *         description: Bad request - invalid request body
+ *       401:
+ *         description: Invalid API key
+ *       500:
+ *         description: Internal server error
+ */
+router.post('/resources/user-roles', validate(getResourceRolesSchema), getInternalResourceRoles);
+
+/**
+ * @swagger
+ * /internal/resources/v2:
+ *   get:
+ *     summary: Get resources accessible to the authenticated user (paginated) (Internal API)
+ *     tags: [Internal Resources]
+ *     security:
+ *       - apiKeyAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 10
+ *         description: Number of items per page
+ *       - in: query
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: User ID to get resources for
+ *     responses:
+ *       200:
+ *         description: List of accessible resources retrieved successfully (paginated)
+ *       401:
+ *         description: Invalid API key
+ *       403:
+ *         description: Forbidden
+ */
+router.get('/resources/v2', getInternalResourcesV2);
+
+/**
+ * @swagger
+ * /internal/resources/{userId}:
+ *   get:
+ *     summary: Get all resources and roles assigned to a specific user (Internal API)
+ *     description: Retrieve all resources and their corresponding roles assigned to a user. Super admins can access any user's data, while regular users can only access their own data.
+ *     tags: [Internal Resources]
+ *     security:
+ *       - apiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The unique identifier of the user
+ *     responses:
+ *       '200':
+ *         description: User resources and roles retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 resources:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       resourceId:
+ *                         type: string
+ *                         description: The resource ID
+ *                       resourceName:
+ *                         type: string
+ *                         description: The resource name
+ *                       roleName:
+ *                         type: string
+ *                         description: The role name
+ *                       roleId:
+ *                         type: string
+ *                         description: The role ID
+ *       '401':
+ *         description: Invalid API key
+ *       '404':
+ *         description: User not found
+ *       '500':
+ *         description: Internal server error
+ */
+router.get('/resources/:userId', getInternalUserResourcesAndRoles);
 
 /**
  * @swagger
