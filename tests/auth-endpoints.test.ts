@@ -582,6 +582,13 @@ describe('Authentication Endpoints', () => {
       expect(profileResponse.body.isSuperAdmin).toBe(true);
       expect(profileResponse.body.email).toBe(superAdminEmail);
 
+      // Verify that SUPERADMIN users get empty resources array (they have access to all resources)
+      expect(profileResponse.body).toHaveProperty('resources');
+      expect(Array.isArray(profileResponse.body.resources)).toBe(true);
+      
+      // SUPERADMIN should have empty resources array since they have access to everything
+      expect(profileResponse.body.resources.length).toBe(0);
+
       // Verify JWT contains Super Admin role
       const jwt = require('jsonwebtoken');
       const decoded = jwt.decode(loginResponse.body.accessToken);

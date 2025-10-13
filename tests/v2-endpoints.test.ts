@@ -231,6 +231,11 @@ describe('V2 Endpoints', () => {
       expect(response.body.pagination).toHaveProperty('totalPages');
       expect(response.body.pagination).toHaveProperty('hasNext');
       expect(response.body.pagination).toHaveProperty('hasPrev');
+
+      // Check that each user has appRole property
+      response.body.data.forEach((user: any) => {
+        expect(user).toHaveProperty('appRole');
+      });
     });
 
     it('should return paginated users with custom page and limit', async () => {
@@ -332,6 +337,26 @@ describe('V2 Endpoints', () => {
         expect(user.email.toLowerCase()).toContain('active-filter');
         expect(user.isActive).toBe(true);
       });
+    });
+
+    it('should include appRole for each user', async () => {
+      const response = await request(app)
+        .get('/api/users/v2')
+        .set('Authorization', `Bearer ${adminUserToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.length).toBeGreaterThan(0);
+
+      // Find the admin user in the response
+      const adminUser = response.body.data.find((user: any) => user.id === adminUserId);
+      expect(adminUser).toBeDefined();
+      expect(adminUser.appRole).toBe('SUPERADMIN');
+
+      // Find the test user in the response
+      const testUser = response.body.data.find((user: any) => user.id === testUserId);
+      expect(testUser).toBeDefined();
+      // Test user should have a role for WINDBOOKS_APP (automatically assigned)
+      expect(testUser.appRole).toBeDefined();
     });
   });
 

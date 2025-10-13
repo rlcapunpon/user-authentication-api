@@ -1153,5 +1153,44 @@ describe('Resources Endpoints', () => {
       // Clean up
       await (prisma as any).resource.delete({ where: { id: doubleDeleteResource.id } });
     });
+
+    it('should append "(DELETED )" and current date to resource name when soft deleting', async () => {
+      // Create a new resource specifically for this test
+      const originalName = 'Test Resource for Name Modification';
+      const testResource = await (prisma as any).resource.create({
+        data: {
+          name: originalName,
+          description: 'Resource for testing name modification on soft delete',
+        },
+      });
+
+      // Get current date in YYYY-MM-DD format
+      const currentDate = new Date().toISOString().split('T')[0];
+      const expectedName = `${originalName} (DELETED ${currentDate})`;
+
+      // Soft delete the resource
+      const response = await request(app)
+        .delete(`/api/resources/${testResource.id}`)
+        .set('Authorization', `Bearer ${adminUserToken}`);
+
+      expect(response.status).toBe(204);
+
+      // Verify the resource name was modified
+      const updatedResource = await (prisma as any).resource.findUnique({
+        where: { id: testResource.id },
+      });
+      expect(updatedResource).toBeTruthy();
+      expect(updatedResource.name).toBe(expectedName);
+
+      // Verify status was updated to DELETED
+      const resourceStatus = await (prisma as any).resourceStatus.findUnique({
+        where: { resourceId: testResource.id },
+      });
+      expect(resourceStatus).toBeTruthy();
+      expect(resourceStatus.status).toBe('DELETED');
+
+      // Clean up
+      await (prisma as any).resource.delete({ where: { id: testResource.id } });
+    });
   });
 });

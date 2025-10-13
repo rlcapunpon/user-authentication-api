@@ -555,18 +555,28 @@ export const softDeleteResource = async (resourceId: string): Promise<void> => {
     throw new Error('Resource is already deleted');
   }
 
-  // Create or update ResourceStatus to DELETED
-  await prisma.resourceStatus.upsert({
-    where: { resourceId },
-    update: {
-      status: 'DELETED',
-      updatedAt: new Date(),
-    },
-    create: {
-      resourceId,
-      status: 'DELETED',
-    },
-  });
+  // Get current date in YYYY-MM-DD format
+  const currentDate = new Date().toISOString().split('T')[0];
+  const deletedName = `${resource.name} (DELETED ${currentDate})`;
+
+  // Update resource name and create or update ResourceStatus to DELETED
+  await prisma.$transaction([
+    prisma.resource.update({
+      where: { id: resourceId },
+      data: { name: deletedName },
+    }),
+    prisma.resourceStatus.upsert({
+      where: { resourceId },
+      update: {
+        status: 'DELETED',
+        updatedAt: new Date(),
+      },
+      create: {
+        resourceId,
+        status: 'DELETED',
+      },
+    }),
+  ]);
 };
 
 /**

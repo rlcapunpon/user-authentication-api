@@ -355,7 +355,12 @@ export const listUsersPaginated = async (page: number = 1, limit: number = 10, e
     (prisma as any).user.findMany({
       where,
       include: {
-        resourceRoles: true,
+        resourceRoles: {
+          include: {
+            role: true,
+            resource: true,
+          },
+        },
       },
       skip,
       take: limit,
@@ -366,10 +371,32 @@ export const listUsersPaginated = async (page: number = 1, limit: number = 10, e
     (prisma as any).user.count({ where }),
   ]);
 
+  // Get WINDBOOKS_APP resource
+  const windbooksAppResource = await (prisma as any).resource.findFirst({
+    where: { name: 'WINDBOOKS_APP' },
+  });
+
+  // Add appRole to each user
+  const usersWithAppRole = users.map((user: any) => {
+    let appRole = null;
+    if (windbooksAppResource) {
+      const windbooksAppRole = user.resourceRoles.find(
+        (rr: any) => rr.resourceId === windbooksAppResource.id
+      );
+      if (windbooksAppRole) {
+        appRole = windbooksAppRole.role.name;
+      }
+    }
+    return {
+      ...user,
+      appRole,
+    };
+  });
+
   const totalPages = Math.ceil(total / limit);
 
   return {
-    data: users,
+    data: usersWithAppRole,
     pagination: {
       page,
       limit,

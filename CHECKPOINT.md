@@ -314,3 +314,16 @@
 - **Technical Details**: Enhanced error handling provides clear feedback for different inactive user scenarios; maintains security by preventing deactivated user access while providing informative error messages
 
 **Status**: ✅ Complete - Deactivated user handling during login implemented and tested following strict TDD methodology.
+
+## Step 10-13-2025.STEP1 - Add appRole to GET /api/users/v2 Response
+- **Test Implementation**: Created comprehensive failing test suite in `tests/v2-endpoints.test.ts` expecting appRole property in paginated user responses (TDD approach)
+- **Service Layer**: Enhanced `listUsersPaginated` function in `src/services/user.service.ts` to compute appRole by:
+  - Fetching WINDBOOKS_APP resource from database
+  - Finding user's role assignment for this resource
+  - Including role name in response or null if no role exists
+- **Implementation Details**: Added post-query processing to map users with their appRole based on WINDBOOKS_APP resource assignments; maintains existing pagination, sorting, and filtering functionality
+- **Test Fixes**: Updated `tests/internal-endpoints.test.ts` to use dynamic current date instead of hardcoded date for deleted resource name validation
+- **Validation Results**: All 299 tests passing, TypeScript compilation successful, GET /api/users/v2 now includes appRole field showing user's role for WINDBOOKS_APP resource
+- **Technical Details**: Computed field added post-query to avoid complex joins; handles cases where users have no WINDBOOKS_APP role assignment; maintains backward compatibility with existing endpoint behavior
+
+**Status**: ✅ Complete - appRole field added to GET /api/users/v2 response following strict TDD methodology.

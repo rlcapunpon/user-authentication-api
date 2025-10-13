@@ -270,6 +270,45 @@ describe('Internal Resources Endpoints', () => {
       // Clean up
       await (prisma as any).resource.delete({ where: { id: doubleDeleteResource.id } });
     });
+
+    it('should append "(DELETED )" and current date to resource name when soft deleting via internal endpoint', async () => {
+      // Create a new resource specifically for this test
+      const originalName = 'Internal Test Resource for Name Modification';
+      const testResource = await (prisma as any).resource.create({
+        data: {
+          name: originalName,
+          description: 'Resource for testing name modification on soft delete via internal endpoint',
+        },
+      });
+
+      // Get current date in YYYY-MM-DD format
+      const currentDate = new Date().toISOString().split('T')[0];
+      const expectedName = `${originalName} (DELETED ${currentDate})`;
+
+      // Soft delete the resource via internal endpoint
+      const response = await request(app)
+        .delete(`/api/internal/resources/${testResource.id}`)
+        .set('X-API-Key', adminApiKey);
+
+      expect(response.status).toBe(204);
+
+      // Verify the resource name was modified
+      const updatedResource = await (prisma as any).resource.findUnique({
+        where: { id: testResource.id },
+      });
+      expect(updatedResource).toBeTruthy();
+      expect(updatedResource.name).toBe(expectedName);
+
+      // Verify status was updated to DELETED
+      const resourceStatus = await (prisma as any).resourceStatus.findUnique({
+        where: { resourceId: testResource.id },
+      });
+      expect(resourceStatus).toBeTruthy();
+      expect(resourceStatus.status).toBe('DELETED');
+
+      // Clean up
+      await (prisma as any).resource.delete({ where: { id: testResource.id } });
+    });
   });
 
   describe('POST /api/internal/resources/user-roles', () => {
@@ -603,7 +642,8 @@ describe('Internal Resources Endpoints', () => {
 
       // Verify specific resources and roles
       const resourceNames = response.body.resources.map((r: any) => r.resourceName);
-      expect(resourceNames).toContain('Resource 1');
+      const currentDate = new Date().toISOString().split('T')[0];
+      expect(resourceNames).toContain(`Resource 1 (DELETED ${currentDate})`);
       expect(resourceNames).toContain('Resource 2');
       expect(resourceNames).not.toContain('Resource 3');
     });

@@ -297,6 +297,26 @@ export const getMe = async (userId: string) => {
       timestamp: new Date().toISOString(),
     });
 
+    // Determine resources to return
+    let resourcesToReturn;
+    if (calculatedIsSuperAdmin) {
+      // For SUPERADMIN users, return empty resources array since they have access to all resources
+      resourcesToReturn = [];
+      
+      console.log('getMe SUPERADMIN user - returning empty resources array (has access to all)', {
+        userId,
+        email: me.email,
+        timestamp: new Date().toISOString(),
+      });
+    } else {
+      // For regular users, return only their assigned resources
+      resourcesToReturn = me.resourceRoles.map((rr: any) => ({
+        resourceId: rr.resourceId,
+        role: rr.role.name,
+        resourceName: rr.resource.name
+      }));
+    }
+
     // Transform to match response structure
     const transformedUser = {
       id: me.id,
@@ -318,11 +338,7 @@ export const getMe = async (userId: string) => {
           nickName: me.details.reportTo.details?.nickName
         } : null
       } : null,
-      resources: me.resourceRoles.map((rr: any) => ({
-        resourceId: rr.resourceId,
-        role: rr.role.name,
-        resourceName: rr.resource.name
-      }))
+      resources: resourcesToReturn
     };
 
     return transformedUser;
